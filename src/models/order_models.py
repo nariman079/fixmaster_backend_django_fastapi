@@ -2,6 +2,7 @@ from django.db import models
 
 
 class Booking(models.Model):
+    
     class Meta:
         verbose_name = 'Бронирование'
         verbose_name_plural = 'Бронирование'
@@ -15,7 +16,7 @@ class Booking(models.Model):
         null=True, blank=True
         )
     master = models.ForeignKey(
-        Master, on_delete=models.CASCADE, 
+        'src.Master', on_delete=models.CASCADE, 
         )
 
     def __str__(self):
@@ -25,8 +26,8 @@ class Booking(models.Model):
 class Order(models.Model):
 
     class Meta:
-        verbose_name = 'Продукт'
-        verbose_name_plural = 'Продукты'
+        verbose_name = 'Заказ'
+        verbose_name_plural = 'Заказы'
 
     begin_date = models.DateField(
         'Дата начала', 
@@ -41,25 +42,24 @@ class Order(models.Model):
         choices=statuses.CHOICES_STATUS, 
         null=True, blank=True)
     customer = models.ForeignKey(
-        Customer, 
+        'src.Customer', 
         on_delete=models.CASCADE, 
         verbose_name='Клиент'
         )
     master = models.ForeignKey(
-        Master, 
+        'src.Master', 
         on_delete=models.CASCADE, 
         verbose_name='Мастер'
         )
     payment_id = models.CharField(
         max_length=200, 
-        null=True, blank=True)
+        null=True, blank=True
+        )
     payment_link = models.CharField(
         max_length=500, 
         null=True, 
         blank=True
         )
-
-    
 
     def __str__(self):
         return str(self.master)

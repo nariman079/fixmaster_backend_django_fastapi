@@ -2,6 +2,7 @@ from django.db import models
 
 from src.enums import statuses
 
+
 class OrganizationType(models.Model):
     """ Типы орзанизаций """
 
@@ -12,6 +13,7 @@ class OrganizationType(models.Model):
     title = models.CharField(
         verbose_name="", max_length=255
         )
+
 
 class Organization(models.Model):
 
@@ -62,8 +64,6 @@ class Organization(models.Model):
     def __str__(self):
         return self.title
 
-    
-
 
 class Master(models.Model):
 
@@ -105,31 +105,6 @@ class Master(models.Model):
     def __str__(self):
         return self.name
 
-    
-
-
-class Image(models.Model):
-
-    class Meta:
-        verbose_name = 'Изображение'
-        verbose_name_plural = 'Изображения'
-
-    image = models.ImageField(
-        'Изображение', upload_to='images/', 
-        null=True, blank=True
-        )
-    priority = models.IntegerField(
-        'Приоритет', 
-        null=True, blank=True
-        )
-    
-    def __str__(self):
-        return self.title
-
-
-
-
-
 
 class Service(models.Model):
 
@@ -152,9 +127,7 @@ class Service(models.Model):
 
     def __str__(self):
         return self.title
-
     
-
 
 class Customer(models.Model):
 
@@ -163,9 +136,8 @@ class Customer(models.Model):
         verbose_name_plural = 'Клиенты'
 
     telegram_id = models.CharField(
-        'Айди Телеграм-аккаунта', 
+        'ID Телеграм', 
         max_length=30, 
-        null=True, blank=True
         )
     phone = models.CharField(
         'Номер телефона', max_length=30, 
@@ -175,7 +147,11 @@ class Customer(models.Model):
         'Имя пользователя', max_length=30, 
         null=True, blank=True
         )
-
+    addidional_info = models.CharField(
+        "Дополнительная информация",
+        max_length=255, null=True, blank=True
+    )
+    
     def __str__(self):
         return self.username
 
