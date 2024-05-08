@@ -1,0 +1,37 @@
+version: '3'
+services:
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
+    container_name: 'redis'
+    depends_on:
+      - web
+
+  web:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    command: bash -c 'python3 manage.py makemigrations && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000'
+
+
+  celery-worker:
+    build: .
+    command: celery -A FIXMASTER worker -l INFO
+    depends_on:
+      - redis
+
+  nginx:
+    image: "nginx:alpine"
+    ports:
+      - "80:80"
+    container_name: 'nginx'
+    depends_on:
+      - web
+    volumes:
+      - ./default.conf:/etc/nginx/default.conf
+
+volumes:
+  static_volume:
+  media_volume:
