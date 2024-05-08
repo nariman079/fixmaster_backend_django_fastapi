@@ -13,11 +13,13 @@ bot = TeleBot(telegram_bot_token)
 
 @shared_task
 def send_message_on_telegram(chat_id, message):
+    """ Async sending message on telegram chat """
     bot.send_message(chat_id=chat_id, text=message)
 
 
 @shared_task(bind=True, default_retry_delay=60, max_retries=None)
 def auto_checking_order(self, order_id: int):
+    """ Checking order on end time """
     now_date, now_time = timezone.now().date(), timezone.now().time()
     order: Order = Order.objects.get(id=order_id)
 
@@ -34,9 +36,8 @@ def auto_checking_order(self, order_id: int):
         elif end_time <= 15:
             # Send message, 15 min before the start
             send_message_on_telegram(chat_id=order.customer.telegram_id, message=f"Message {end_time}")
-            self.retry(countdown=3)
+            self.retry(countdown=3*60)
         elif end_time <= 3:
-
             send_message_on_telegram(chat_id=order.customer.telegram_id, message=f"Message {end_time}")
 
 

@@ -3,28 +3,11 @@ from datetime import datetime, timedelta
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from .models import organization_models
-
-
-class BusinessSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = organization_models.Business
-        fields = '__all__'
-
-
-class MasterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = organization_models.Master
-        fields = '__all__'
-
-
-class ServiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = organization_models.Service
-        fields = '__all__'
+from src.models import organization_models
 
 
 class OrderSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = organization_models.Order
         fields = '__all__'
@@ -45,7 +28,7 @@ class OrderSerializer(serializers.ModelSerializer):
             raise ValidationError({"order.begin_time": "За час до закрытия заявки не принимаются"})
         if begin_time < business.time_begin:
             raise ValidationError({"order.begin_time": "Салон еще не открыт"})
-
+        
         return data
 
 

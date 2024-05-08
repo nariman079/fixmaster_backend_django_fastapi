@@ -1,6 +1,6 @@
 from django.db import models
 
-from .enums import data
+from src.enums import statuses
 
 class OrganizationType(models.Model):
     """ Типы орзанизаций """
@@ -89,7 +89,7 @@ class Master(models.Model):
         )
     gender = models.CharField(
         'Пол', max_length=30,
-        choices=data.CHOICES_GENDER, 
+        choices=statuses.CHOICES_GENDER, 
         default='WOMEN',
         null=True, blank=True
     )
@@ -99,7 +99,7 @@ class Master(models.Model):
         verbose_name='Бизнесс'
         )
     service = models.ManyToManyField(
-        Service, verbose_name='Услуги', through=
+        Service, verbose_name='Услуги'
         )
 
     def __str__(self):
@@ -157,45 +157,28 @@ class Service(models.Model):
 
 
 class Customer(models.Model):
-    telegram_id = models.CharField('Айди Телеграм-аккаунта', max_length=30, null=True, blank=True)
-    phone = models.CharField('Номер телефона', max_length=30, null=True, blank=True)
-    username = models.CharField('Имя пользователя', max_length=30, null=True, blank=True)
-
-    def __str__(self):
-        return self.username
 
     class Meta:
         verbose_name = 'Клиент'
         verbose_name_plural = 'Клиенты'
 
-
-class Booking(models.Model):
-    booking_date = models.DateField('Дата бронирования', null=True, blank=True)
-    booking_time = models.TimeField('Время бронирования', null=True, blank=True)
-    master = models.ForeignKey(Master, on_delete=models.CASCADE, verbose_name='Мастер')
-
-    class Meta:
-        verbose_name = 'Бронирование'
-        verbose_name_plural = 'Бронирование'
-
-    def __str__(self):
-        return str(self.master)
-
-
-class Order(models.Model):
-
-    begin_date = models.DateField('Дата начала', null=True, blank=True)
-    begin_time = models.TimeField('Время начала', null=True, blank=True)
-    status = models.CharField('Статус', max_length=20, choices=data.CHOICES_STATUS, null=True, blank=True)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Клиент')
-    master = models.ForeignKey(Master, on_delete=models.CASCADE, verbose_name='Мастер')
-
-    payment_id = models.CharField(max_length=200, null=True, blank=True)
-    payment_link = models.CharField(max_length=500, null=True, blank=True)
-
-    class Meta:
-        verbose_name = 'Продукт'
-        verbose_name_plural = 'Продукты'
+    telegram_id = models.CharField(
+        'Айди Телеграм-аккаунта', 
+        max_length=30, 
+        null=True, blank=True
+        )
+    phone = models.CharField(
+        'Номер телефона', max_length=30, 
+        null=True, blank=True
+        )
+    username = models.CharField(
+        'Имя пользователя', max_length=30, 
+        null=True, blank=True
+        )
 
     def __str__(self):
-        return str(self.master)
+        return self.username
+
+    
+
+
