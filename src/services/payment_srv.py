@@ -1,22 +1,19 @@
 import hashlib
 import uuid
-from pprint import pprint
 from urllib.parse import urlencode
 
 
 class PaymentMethod:
     """ Платежные методы """
-
     PAY = 'pay/'  # пополние
-    ...
+    
 
 
 class Currency:
     """ Валюты """
 
     RU = "RUB"
-    ...
-
+    
 
 class AAIOBank:
     BASE_URL = "https://aaio.so/merchant/"
@@ -33,14 +30,14 @@ class AAIOBank:
         self.merchant_id: str = merchant_id
         self.aaio_api_key: str = aaio_api_key
 
-    def generate_payment_information(self, amount: float):
+    def _generate_payment_information(self, amount: float):
         self.amount = amount
         self.currency = Currency.RU
         self.order_id = uuid.uuid4()
         self.desc = 'Order Payment'
         self.lang = 'ru'
 
-    def generate_signature(self):
+    def _generate_signature(self):
         self.sign = f':'.join([
             str(self.merchant_id),
             str(self.amount),
@@ -50,8 +47,8 @@ class AAIOBank:
         ])
 
     def create_payment(self, amount: float):
-        self.generate_payment_information(amount)
-        self.generate_signature()
+        self._generate_payment_information(amount)
+        self._generate_signature()
 
         if not self.sign:
             raise ValueError("Not sing yet")
@@ -76,9 +73,4 @@ class AAIOBank:
         return payment_data
 
 
-AAIO_API_KEY = 'NWJkMTgwY2UtYWU3ZS00NTE1LTkyYTAtZWQyMmU1MjdlOTQwOmFZV1d3X0EpX0lZX2RTKmU2VitYd0pnK2FsaWRNME5k'
 
-bank = AAIOBank(aaio_api_key=AAIO_API_KEY, merchant_id='')
-
-url = bank.create_payment(100)
-pprint(url)
