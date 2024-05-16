@@ -44,7 +44,7 @@ class MasterAdmin(admin.ModelAdmin):
         """
         print(obj.image.__dict__)
         return format_html(f"""<img src="{obj.image} width="100px">""")
-    
+
 
 class OrganizationAdmin(admin.ModelAdmin):
     """ Master model admin """
@@ -61,7 +61,7 @@ class OrganizationAdmin(admin.ModelAdmin):
         """
         print(obj.image.__dict__)
         return format_html(f"""<img src="{obj.image} width="100px">""")
-    
+
 content_management_admin.register(Master, MasterAdmin)
 content_management_admin.register(Organization, OrganizationAdmin)
 content_management_admin.register(OrganizationType)
