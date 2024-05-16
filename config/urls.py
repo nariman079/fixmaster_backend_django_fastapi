@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
+
 from django.urls import include, path
 
+from src.admin import content_management_admin
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/content-management/', content_management_admin.urls),
     path('src/', include('src.urls')),
 ]
 

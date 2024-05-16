@@ -15,5 +15,5 @@ __all__ = (
     'Service',
     'Organization',
     'Master',
-    'OrganizationType'
+    'OrganizationType',
 )

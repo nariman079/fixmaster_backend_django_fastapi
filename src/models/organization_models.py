@@ -11,95 +11,87 @@ class OrganizationType(models.Model):
         verbose_name_plural = "Типы организаций"
 
     title = models.CharField(
-        verbose_name="", max_length=255
+        verbose_name="Типы оргинизаций", max_length=255
         )
 
 
 class Organization(models.Model):
-
+    """
+    Модель организаций.
+    """
     class Meta:
         verbose_name = 'Салон'
         verbose_name_plural = 'Салоны'
 
     telegram_id = models.CharField(
-        'ID Телеграм', max_length=30, 
-        null=True, blank=True
+        'ID Телеграм', max_length=30,
+        editable=False
         )
     title = models.CharField(
         'Название', max_length=30, 
-        null=True, blank=True
         )
     image = models.ImageField(
-        'Изображение', upload_to='business',
-        null=True, blank=True
+        'Заглавное изображение', upload_to='business',
         )
     address = models.CharField(
         'Адрес', max_length=30,
-        null=True, blank=True
         )
     contact_phone = models.CharField(
         'Номер телефона', max_length=30, 
-        null=True, blank=True
-        )
-    status = models.BooleanField(
-        'Статус', default=True, 
-        null=True, blank=True
         )
     time_begin = models.TimeField(
-        'Начальное время', 
-        null=True, blank=True
+        'Начало рабочего дня', 
         )
     time_end = models.TimeField(
-        'Конечное время', 
-        null=True, blank=True
+        'Конец рабочего дня', 
         )
     work_schedule = models.CharField(
-        'График работы', max_length=30, 
-        null=True, blank=True
+        'График работы', max_length=30
         )
     organization_type = models.ForeignKey(
         'src.OrganizationType', on_delete=models.PROTECT
         )
-
+    gallery = models.ManyToManyField(
+        'src.Image'
+    )
+    
     def __str__(self):
         return self.title
 
 
 class Master(models.Model):
-
+    """
+    Модель мастеров
+    """
     class Meta:
         verbose_name = 'Мастер'
         verbose_name_plural = 'Мастера'
 
     telegram_id = models.CharField(
         'ID Телеграм', max_length=30,
-        null=True, blank=True
+        default="web_user",
+        editable=False
         )
     name = models.CharField(
         'Имя', max_length=30,
-        null=True, blank=True
         )
     surname = models.CharField(
         'Фамилия', max_length=30,
-        null=True, blank=True
         )
     image = models.ImageField(
         'Изображние', upload_to='master',
-        null=True, blank=True
+
         )
     gender = models.CharField(
         'Пол', max_length=30,
-        choices=statuses.CHOICES_GENDER, 
-        default='WOMEN',
+        choices=statuses.CHOICES_GENDER,
+        default='MEN',
         null=True, blank=True
     )
     organization = models.ForeignKey(
         Organization, 
-        on_delete=models.CASCADE, 
-        verbose_name='Бизнесс'
-        )
-    service = models.ManyToManyField(
-        'src.Service', verbose_name='Услуги'
+        on_delete=models.CASCADE,
+        verbose_name='Организация'
         )
 
     def __str__(self):
@@ -107,37 +99,45 @@ class Master(models.Model):
 
 
 class Service(models.Model):
-
+    """
+    Модель услуг мастеров
+    """
     class Meta:
-        verbose_name = 'Услуги'
-        verbose_name_plural = 'Сервисы'
-
+        verbose_name = 'Услуга'
+        verbose_name_plural = 'Услуги'
+    master = models.ForeignKey(
+        'src.Master', on_delete=models.CASCADE,
+        null=True, blank=True
+    )
     title = models.CharField(
         'Название', max_length=30,
         null=True, blank=True
         )
     price = models.PositiveIntegerField(
-        'Цена', 
+        'Стоимость', 
         null=True, blank=True
         )
     min_time = models.IntegerField(
-        'Минимальное время', 
+        'Минимальная длительность процедуры', 
         null=True, blank=True
         )
 
     def __str__(self):
         return self.title
-    
+
 
 class Customer(models.Model):
-
+    """
+    Модель клиентов
+    """
     class Meta:
         verbose_name = 'Клиент'
         verbose_name_plural = 'Клиенты'
 
     telegram_id = models.CharField(
         'ID Телеграм', 
-        max_length=30, 
+        max_length=30, editable=False
+        
         )
     phone = models.CharField(
         'Номер телефона', max_length=30, 
@@ -155,3 +155,4 @@ class Customer(models.Model):
     def __str__(self):
         return self.username
 
+    

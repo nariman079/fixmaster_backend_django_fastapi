@@ -28,7 +28,7 @@ class Order(models.Model):
     """ Заказы """
 
     class Meta:
-        
+
         verbose_name = 'Заказ'
         verbose_name_plural = 'Заказы'
 
