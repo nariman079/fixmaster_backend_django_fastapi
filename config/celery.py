@@ -1,3 +1,6 @@
+"""
+Celery in project
+"""
 import os
 from celery import Celery
 

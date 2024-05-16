@@ -1,8 +1,9 @@
 from django.db import models
-
+from src.enums import statuses
 
 class Booking(models.Model):
-    
+    """ Брони мастеров """
+
     class Meta:
         verbose_name = 'Бронирование'
         verbose_name_plural = 'Бронирование'
@@ -24,8 +25,10 @@ class Booking(models.Model):
 
 
 class Order(models.Model):
+    """ Заказы """
 
     class Meta:
+        
         verbose_name = 'Заказ'
         verbose_name_plural = 'Заказы'
 
@@ -52,14 +55,16 @@ class Order(models.Model):
         verbose_name='Мастер'
         )
     payment_id = models.CharField(
-        max_length=200, 
+        max_length=200,
         null=True, blank=True
         )
     payment_link = models.CharField(
-        max_length=500, 
-        null=True, 
+        max_length=500,
+        null=True,
         blank=True
         )
-
+    services = models.ForeignKey(
+        'src.Service', on_delete=models.PROTECT
+    )
     def __str__(self):
         return str(self.master)

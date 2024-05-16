@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class ApiConfig(AppConfig):
+class SrcAppConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'api'
-    verbose_name = '- Управление контентом'
+    name = 'src'
+    verbose_name = 'СУБ'

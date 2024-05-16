@@ -57,10 +57,10 @@ class Organization(models.Model):
         'График работы', max_length=30, 
         null=True, blank=True
         )
-    type = models.ForeignKey(
+    organization_type = models.ForeignKey(
         'src.OrganizationType', on_delete=models.PROTECT
         )
-    
+
     def __str__(self):
         return self.title
 
@@ -99,7 +99,7 @@ class Master(models.Model):
         verbose_name='Бизнесс'
         )
     service = models.ManyToManyField(
-        Service, verbose_name='Услуги'
+        'src.Service', verbose_name='Услуги'
         )
 
     def __str__(self):
@@ -154,7 +154,4 @@ class Customer(models.Model):
     
     def __str__(self):
         return self.username
-
-    
-
 

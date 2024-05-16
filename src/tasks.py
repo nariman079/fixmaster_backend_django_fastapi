@@ -1,5 +1,4 @@
 import os
-from datetime import timedelta
 
 from celery import shared_task
 from telebot import TeleBot

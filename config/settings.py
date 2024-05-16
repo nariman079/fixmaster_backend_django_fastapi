@@ -18,10 +18,6 @@ ROOT_APPS = [
     'src'
 ]
 INSTALLED_APPS = [
-    'rest_framework',
-    'drf_yasg',
-    "corsheaders",
-    'drf_spectacular',
     'django_celery_beat',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -29,6 +25,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    "corsheaders",
+    'drf_spectacular',
+    *ROOT_APPS
 ]
 
 MIDDLEWARE = [
@@ -42,7 +42,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'confing.urls'
+ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
