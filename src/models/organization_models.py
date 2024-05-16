@@ -17,7 +17,7 @@ class OrganizationType(models.Model):
 
 class Organization(models.Model):
     """
-    Модель организаций.
+    Модель "Организация"
     """
     class Meta:
         verbose_name = 'Салон'
@@ -30,7 +30,7 @@ class Organization(models.Model):
     title = models.CharField(
         'Название', max_length=30, 
         )
-    image = models.ImageField(
+    main_image = models.ImageField(
         'Заглавное изображение', upload_to='business',
         )
     address = models.CharField(
@@ -51,17 +51,18 @@ class Organization(models.Model):
     organization_type = models.ForeignKey(
         'src.OrganizationType', on_delete=models.PROTECT
         )
-    gallery = models.ManyToManyField(
-        'src.Image'
+    is_verified = models.BooleanField(
+        "Верифицирован",
+        default=False
     )
-    
+
     def __str__(self):
         return self.title
 
 
 class Master(models.Model):
     """
-    Модель мастеров
+    Модель "Мастер"
     """
     class Meta:
         verbose_name = 'Мастер'
@@ -94,13 +95,18 @@ class Master(models.Model):
         verbose_name='Организация'
         )
 
+    is_verified = models.BooleanField(
+        "Верифицирован",
+        default=False
+    )
+
     def __str__(self):
         return self.name
 
 
 class Service(models.Model):
     """
-    Модель услуг мастеров
+    Модель "Услуга мастера"
     """
     class Meta:
         verbose_name = 'Услуга'
@@ -128,7 +134,7 @@ class Service(models.Model):
 
 class Customer(models.Model):
     """
-    Модель клиентов
+    Модель "Клиент"
     """
     class Meta:
         verbose_name = 'Клиент'

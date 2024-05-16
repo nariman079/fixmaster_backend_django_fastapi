@@ -13,7 +13,10 @@ class Image(models.Model):
     class Meta:
         verbose_name = 'Изображение'
         verbose_name_plural = 'Изображения'
-
+    organization = models.ForeignKey(
+        'src.Organization',
+        on_delete=models.CASCADE
+    )
     image = models.ImageField(
         'Изображение', upload_to='images/'
         )
