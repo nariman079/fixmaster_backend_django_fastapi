@@ -8,7 +8,7 @@ CHOICES_GENDER = (
 )
 
 CHOICES_STATUS = (
-    ('New', 'Новый'),
-    ('InProgress', 'В прогрессе'),
-    ('Done', 'Закончено'),
+    ('new', 'Новый'),
+    ('in-progress', 'В прогрессе'),
+    ('done', 'Закончено'),
 )
