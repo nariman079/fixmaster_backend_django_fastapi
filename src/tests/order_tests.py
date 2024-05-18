@@ -1,9 +1,12 @@
 
 from datetime import datetime, time, date
-from typing import OrderedDict
+from collections import OrderedDict
 from django.core.files.uploadedfile import SimpleUploadedFile
+
 from rest_framework.test import APITestCase
+
 from src.services.order_services import OrderCreateSrc
+from src.services.time_services import FreeBookingSrc
 from src.models import Master, Service, Organization, OrganizationType
 
 def generate_image():
@@ -45,19 +48,69 @@ class OrderTestCase(APITestCase):
             price=10,
             min_time=30
         )
+        self.booking_test_date = date(day=10,year=2023, month=12)
+
     def test_create_order(self):
         data = OrderedDict(
             master_id=self.master.id,
-            service_ids='1,1',
-            begin_date=date(day=10,year=2023, month=12),
+            service_ids=[1,],
+            begin_date=datetime(day=10,year=2023, month=12),
             begin_time=time(hour=10, minute=30),
-            customer_phone="89"
+            customer_phone="89",
+            customer_name="name",
+            customer_notice="notice"
         )
         order_create_srv = OrderCreateSrc(
+            serialzier_data=data,
+            serializer_validate_data=data
+        )
+        response = order_create_srv.execute()
+
+        self.master.refresh_from_db()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self.master.booking_set.all().count(), 1)
+
+    def test_getting_bookings(self):
+
+        data = OrderedDict(
+            master_id=self.master.id,
+            date=self.booking_test_date
+        )
+        booking_times = FreeBookingSrc(
             data
+        )
+        response = booking_times.execute()
+        self.assertEqual(response.status_code, 200)
+
+    def test_getting_bookings_ok(self):
+        service = self.service = Service.objects.create(
+            master=self.master,
+            title="title",
+            price=10,
+            min_time=90
+        )
+        data = OrderedDict(
+            master_id=self.master.id,
+            service_ids=[service.pk, ],
+            begin_date=datetime(day=10, year=2023, month=12),
+            begin_time=time(hour=10, minute=30),
+            customer_phone="89",
+            customer_name="name",
+            customer_notice="notice"
+        )
+        order_create_srv = OrderCreateSrc(
+            serialzier_data=data,
+            serializer_validate_data=data
         )
         order_create_srv.execute()
 
-        self.master.refresh_from_db()
-        self.assertEqual(self.master.booking_set.all().count(), 1)
-        
+        booking_data = OrderedDict(
+            master_id=self.master.id,
+            date=self.booking_test_date
+        )
+        booking_times = FreeBookingSrc(
+            booking_data
+        )
+        response = booking_times.execute()
+        self.assertEqual(response.status_code, 200)
+

@@ -63,6 +63,14 @@ class Order(models.Model):
         "Номер телефона клиента",
         max_length=30
         )
+    customer_name = models.CharField(
+        "Имя клиента",
+        max_length=60
+    )
+    customer_notice = models.CharField(
+        "Коментарий",
+        max_length=120
+    )
     payment_id = models.CharField(
         max_length=200,
         null=True, blank=True
