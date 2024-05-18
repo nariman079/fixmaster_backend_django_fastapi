@@ -6,12 +6,14 @@ from django.utils.html import format_html
 
 from src.models import Organization, OrganizationType, Image, Service, Master
 
+
 class ContentManagementArea(admin.AdminSite):
     """
     Customization admin panel for content management
     """
     site_header = "Управление контентом"
     site_title = "Контент сайта"
+
 
 content_management_admin = ContentManagementArea(name="Content management")
 
@@ -38,29 +40,29 @@ class MasterAdmin(admin.ModelAdmin):
         MasterServiceTabularInilne
     ]
 
-    def avatar(self,obj: Master):
+    def avatar(self, obj: Master):
         """ 
         Generating image for the admin panel of the wizard 
         """
         print(obj.image.__dict__)
-        return format_html(f"""<img src="{obj.image} width="100px">""")
+        return format_html(f"""<img src="{obj.image.url} width="100px">""")
 
 
 class OrganizationAdmin(admin.ModelAdmin):
     """ Master model admin """
-    list_display = ('image', 'title', 'contact_phone', 'organization_type')
+    list_display = ('avatar', 'title', 'contact_phone', 'organization_type')
 
     inlines = [
         OrganizationMasterInlinel,
         OrganizationImageInlinel
     ]
 
-    def avatar(self,obj: Master):
+    def avatar(self, obj: Organization):
         """
-        Generating image for the admin panel of the wizard 
+        Generating image for the admin panel of the Organization
         """
-        print(obj.image.__dict__)
-        return format_html(f"""<img src="{obj.image} width="100px">""")
+        return format_html(f"""<img src="{obj.main_image} width="100px">""")
+
 
 content_management_admin.register(Master, MasterAdmin)
 content_management_admin.register(Organization, OrganizationAdmin)
