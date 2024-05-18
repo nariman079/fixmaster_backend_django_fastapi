@@ -1,18 +1,41 @@
 from rest_framework import serializers
-from src.models import Organization, Master
+
+from src.models import Organization, Master, Service
 from src.serializers.image_serializers import ImageSerializer
 from src.services.image_services import get_full_url
 
 
+class MasterServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = (
+            'id',
+            'title'
+        )
+
+class OrganizationServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ()
+
 class MasterSerializer(serializers.ModelSerializer):
+    services = serializers.SerializerMethodField()
+
     class Meta:
         model = Master
         fields = (
             'id',
             'image',
             'name',
-            'surname'
+            'surname',
+            'services'
         )
+
+    def get_services(self, master: Master):
+        return ServiceSerializer(
+            instance=master.service_set.all(),
+            many=True).data[:3]
+
 
 class OrganizationSerializer(serializers.ModelSerializer):
     """ Serializer for the organization's list page """
@@ -40,6 +63,7 @@ class OrganizationDetailSerializer(OrganizationSerializer):
 
     gallery = serializers.SerializerMethodField()
     masters = serializers.SerializerMethodField()
+
     class Meta:
         model = Organization
         fields = '__all__'

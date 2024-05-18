@@ -1,6 +1,7 @@
 from django.db import models
 from src.enums import statuses
 
+
 class Booking(models.Model):
     """ Брони мастеров """
 
@@ -10,15 +11,13 @@ class Booking(models.Model):
 
     booking_date = models.DateField(
         'Дата бронирования', 
-        null=True, blank=True
         )
     booking_time = models.TimeField(
         'Время бронирования', 
-        null=True, blank=True
         )
     booking_end_time = models.TimeField(
         "Длительность процедуры",
-        null=True, blank=True, editable=False
+        editable=False
     )
     master = models.ForeignKey(
         'src.Master', on_delete=models.CASCADE, 
@@ -37,12 +36,10 @@ class Order(models.Model):
         verbose_name_plural = 'Заказы'
 
     begin_date = models.DateField(
-        'Дата начала', 
-        null=True, blank=True
+        'Дата начала',
         )
     begin_time = models.TimeField(
         'Время начала', 
-        null=True, blank=True
         )
     length_time = models.IntegerField(
         "Длительность процедуры",
@@ -51,38 +48,39 @@ class Order(models.Model):
     status = models.CharField(
         'Статус', max_length=20, 
         choices=statuses.CHOICES_STATUS, 
-        default='new',
-        null=True, blank=True)
+        default='new'
+    )
     customer = models.ForeignKey(
         'src.Customer', 
-        on_delete=models.CASCADE, 
+        on_delete=models.PROTECT,
         verbose_name='Клиент',
         null=True, blank=True
-        )
+    )
     customer_phone = models.CharField(
         "Номер телефона клиента",
         max_length=30
-        )
+    )
     customer_name = models.CharField(
         "Имя клиента",
         max_length=60
     )
     customer_notice = models.CharField(
         "Коментарий",
-        max_length=120
+        max_length=120,
+        default=' '
     )
     payment_id = models.CharField(
         max_length=200,
-        null=True, blank=True
+        default=' '
         )
     payment_link = models.CharField(
         max_length=500,
-        null=True,
-        blank=True
+        default=' '
         )
     services = models.ManyToManyField(
         'src.Service', 
         null=True, blank=True
         )
+
     def __str__(self):
         return str(self.customer_phone)

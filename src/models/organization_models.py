@@ -81,13 +81,11 @@ class Master(models.Model):
         )
     image = models.ImageField(
         'Изображние', upload_to='master',
-
         )
     gender = models.CharField(
         'Пол', max_length=30,
         choices=statuses.CHOICES_GENDER,
-        default='MEN',
-        null=True, blank=True
+        default='MEN', blank=True
     )
     organization = models.ForeignKey(
         Organization, 
@@ -113,19 +111,20 @@ class Service(models.Model):
         verbose_name_plural = 'Услуги'
     master = models.ForeignKey(
         'src.Master', on_delete=models.CASCADE,
-        null=True, blank=True
     )
     title = models.CharField(
-        'Название', max_length=30,
-        null=True, blank=True
+        'Название', max_length=30
         )
+    short_description = models.CharField(
+        "Короткое описание",
+        max_length=150, null=True,
+        blank=True
+    )
     price = models.PositiveIntegerField(
-        'Стоимость', 
-        null=True, blank=True
+        'Стоимость',
         )
     min_time = models.IntegerField(
         'Минимальная длительность процедуры', 
-        null=True, blank=True
         )
 
     def __str__(self):
@@ -143,19 +142,21 @@ class Customer(models.Model):
     telegram_id = models.CharField(
         'ID Телеграм', 
         max_length=30, editable=False
-        
         )
     phone = models.CharField(
-        'Номер телефона', max_length=30, 
+        'Номер телефона',
+        max_length=30,
         null=True, blank=True
         )
     username = models.CharField(
-        'Имя пользователя', max_length=30, 
+        'Имя пользователя',
+        max_length=30,
         null=True, blank=True
         )
     addidional_info = models.CharField(
         "Дополнительная информация",
-        max_length=255, null=True, blank=True
+        max_length=255,
+        null=True, blank=True
     )
     
     def __str__(self):
