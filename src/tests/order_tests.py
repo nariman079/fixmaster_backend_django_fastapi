@@ -5,8 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from rest_framework.test import APITestCase
 
-from src.services.order_services import OrderCreateSrc
-from src.services.time_services import FreeBookingSrc
+from src.services.order_services import OrderCreateSrc, FreeBookingSrc
 from src.models import Master, Service, Organization, OrganizationType
 
 def generate_image():
@@ -48,7 +47,7 @@ class OrderTestCase(APITestCase):
             price=10,
             min_time=30
         )
-        self.booking_test_date = date(day=10,year=2023, month=12)
+        self.booking_test_date = datetime(day=10, year=2023, month=12)
 
     def test_create_order(self):
         data = OrderedDict(
@@ -92,7 +91,7 @@ class OrderTestCase(APITestCase):
         data = OrderedDict(
             master_id=self.master.id,
             service_ids=[service.pk, ],
-            begin_date=datetime(day=10, year=2023, month=12),
+            begin_date=self.booking_test_date,
             begin_time=time(hour=10, minute=30),
             customer_phone="89",
             customer_name="name",
@@ -106,7 +105,7 @@ class OrderTestCase(APITestCase):
 
         booking_data = OrderedDict(
             master_id=self.master.id,
-            date=self.booking_test_date
+            date=datetime(day=11, year=2023, month=12)
         )
         booking_times = FreeBookingSrc(
             booking_data
@@ -114,3 +113,4 @@ class OrderTestCase(APITestCase):
         response = booking_times.execute()
         self.assertEqual(response.status_code, 200)
 
+        # todo Дописать тесты

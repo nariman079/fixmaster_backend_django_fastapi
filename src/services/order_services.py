@@ -1,17 +1,16 @@
-
-from datetime import  datetime, timedelta
+from datetime import time
+from typing import OrderedDict
+from pprint import pprint
+from datetime import datetime, timedelta
 from typing import Any, OrderedDict, List
-
 
 from django.db.models.query import QuerySet
 from django.db.models import Sum
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from yaml import serialize
 
 from src.models import Order, Booking, Service
-
 
 
 def complete_totals(serivices: QuerySet['Service']) -> Any:
@@ -20,6 +19,22 @@ def complete_totals(serivices: QuerySet['Service']) -> Any:
         total_time_length=Sum('min_time'),
         total_price=Sum('price'))
 
+
+def time_to_int(time: time) -> int:
+    """ Time to int """
+    return int(time.strftime('%H:%M').split(':')[0])
+
+
+def is_free_time(time: str, available_times: list[str]):
+    hour = time.split(':')[0]
+    all_times = map(lambda x: x.split(':')[0], available_times)
+
+    return {
+        'time': time,
+        'is_free': hour not in all_times
+    }
+
+
 class OrderCreateSrc:
     """
     Create order service
@@ -27,12 +42,12 @@ class OrderCreateSrc:
 
     def __init__(
             self,
-                 serializer_validate_data: OrderedDict,
-                 serialzier_data: OrderedDict
-                 ):
+            serializer_validate_data: OrderedDict,
+            serialzier_data: OrderedDict
+    ):
         self.serializer_data = serialzier_data
         self.master_id = serializer_validate_data.get('master_id')
-        self.service_ids = serializer_validate_data.get('service_ids') # type: ignore
+        self.service_ids = serializer_validate_data.get('service_ids')  # type: ignore
         self.begin_date = serializer_validate_data.get('begin_date')
         self.begin_time = serializer_validate_data.get('begin_time')
         self.customer_phone = serializer_validate_data.get('customer_phone')
@@ -42,33 +57,33 @@ class OrderCreateSrc:
     def _validate_booking_master(self) -> None:
         bookings = Booking.objects.filter(
             master_id=self.master_id,
-            booking_date=self.begin_date, 
+            booking_date=self.begin_date,
             booking_time=self.begin_time
-            )
+        )
         if bookings:
             raise ValidationError({
-                'success':False,
-                'message':'Время уже забронировано другим пользователем',
-                'data':{}
+                'success': False,
+                'message': 'Время уже забронировано другим пользователем',
+                'data': {}
             }, code=400)
 
     def _get_all_services(self) -> None:
         self.serivces = Service.objects.filter(id__in=self.service_ids)
         if not self.serivces:
             raise ValidationError({
-                'message':"Services not found",
-                'success':False,
-                'data':[]
+                'message': "Services not found",
+                'success': False,
+                'data': []
             },
-            code=422)
+                code=422)
 
     def _complete_full_time_length(self) -> None:
         """ Complete full time length """
         sum_total_data = complete_totals(serivices=self.serivces)
         self.summed_num = sum_total_data['total_time_length']
         self.summed_time = (datetime.combine(self.begin_date, self.begin_time
-        ) + timedelta(minutes=sum_total_data['total_time_length'])).time()
-        self.total_price = sum_total_data['total_price']    
+                                             ) + timedelta(minutes=sum_total_data['total_time_length'])).time()
+        self.total_price = sum_total_data['total_price']
 
         if not self.summed_time or not self.total_price:
             raise ValidationError(code=422)
@@ -83,7 +98,7 @@ class OrderCreateSrc:
             customer_name=self.customer_name,
             customer_notice=self.customer_notice
         )
-        for i in self.service_ids: # type: ignore
+        for i in self.service_ids:  # type: ignore
             self.order.services.add(i)
         self.order.save()
 
@@ -105,7 +120,58 @@ class OrderCreateSrc:
         self._create_booking()
 
         return Response({
-            'message':"Заказ успешно создан",
-            'success':True,
-            'data':self.serializer_data
+            'message': "Заказ успешно создан",
+            'success': True,
+            'data': self.serializer_data
         }, status=201)
+
+
+class FreeBookingSrc:
+    """
+    Free booking dates and times
+    """
+
+    times = [f'{i}:00' for i in range(4, 20)]
+
+    def __init__(self, serializer_validated_data: OrderedDict) -> None:
+        self.date = serializer_validated_data.get('date')
+        self.master_id = serializer_validated_data.get('master_id')
+
+    def _get_master_bookings(self) -> None:
+        """
+        Get all booking on current date
+        """
+        self.bookings = Booking.objects.filter(
+            master_id=self.master_id,
+            booking_date=self.date
+        )
+
+    def _get_master_available_time(self):
+        """
+        Get master available time
+        """
+        self.available_times = set()
+        for booking in self.bookings:
+            start = time_to_int(booking.booking_time)
+            end = time_to_int(booking.booking_end_time)
+            for i in range(start, end + 1):
+                self.available_times.add(f'{i}:00')
+
+    def _generate_all_times(self):
+        """
+        Generate all times for response
+        """
+        self.free_times = [is_free_time(i, sorted(self.available_times)) for i in self.times]
+
+    def execute(self):
+        """
+        Run commands
+        """
+        self._get_master_bookings()
+        self._get_master_available_time()
+        self._generate_all_times()
+        return Response({
+            'message': "All times has been received",
+            'success': True,
+            'data': self.free_times
+        }, status=200)

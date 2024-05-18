@@ -21,5 +21,8 @@ class OrderSerializer(serializers.Serializer):
     customer_notice = serializers.CharField(
         max_length=120
     )
-    
 
+
+class BookingSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    master_id = serializers.IntegerField()
