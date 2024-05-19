@@ -32,7 +32,7 @@ class MasterSerializer(serializers.ModelSerializer):
         )
 
     def get_services(self, master: Master):
-        return ServiceSerializer(
+        return MasterServiceSerializer(
             instance=master.service_set.all(),
             many=True).data[:3]
 
