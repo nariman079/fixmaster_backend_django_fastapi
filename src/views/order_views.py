@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from typing import OrderedDict
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.request import Request
@@ -16,7 +16,8 @@ class OrderCreateView(APIView):
         serializer = OrderSerializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
 
-        if isinstance(serializer.validated_data, OrderedDict):
+        if isinstance(serializer.validated_data, dict):
+            print(serializer)
             order_create_srv = OrderCreateSrc(
                 serializer_validate_data=serializer.validated_data,
                 serialzier_data=serializer.data
@@ -39,7 +40,7 @@ class FreeBookingView(APIView):
         serializer = BookingSerializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
 
-        if isinstance(serializer.validated_data, OrderedDict):
+        if isinstance(serializer.validated_data, dict):
             free_booking_src = FreeBookingSrc(
                 serializer_validated_data=serializer.validated_data,
             )
