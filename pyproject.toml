@@ -22,4 +22,3 @@ drf-yasg = "^1.21.7"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-0
