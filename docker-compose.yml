@@ -15,8 +15,7 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    networks:
-      - app_net
+    network_mode: host
 
   redis:
     image: 'redis:alpine'
