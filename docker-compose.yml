@@ -16,7 +16,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - net
+      - app_net
 
   redis:
     image: 'redis:alpine'
