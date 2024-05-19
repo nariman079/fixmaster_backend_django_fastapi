@@ -35,8 +35,8 @@ services:
     command: /bin/bash -c "poetry run python manage.py collectstatic --noinput && poetry run python manage.py migrate && poetry run uvicorn app.asgi:application --host 0.0.0.0 --port 8000 --workers 4"
     volumes:
       - .:/app
-      - static_volume:/app/static
-      - media_volume:/app/media
+      - static:/app/static
+      - media:/app/media
     env_file:
       - .env
     depends_on:
@@ -57,7 +57,6 @@ services:
     volumes:
       - static:/app/static
       - media:/app/media
-      - exchanger_data:/exchanger/temp
     networks:
       - app_net
   # Nginx
