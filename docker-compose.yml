@@ -45,8 +45,7 @@ services:
       - app_net
   # Celery
   celery:
-    build:
-      dockerfile: app.Dockerfile
+    build: .
     command:  celery -A config worker -l info
     env_file:
       - .env
