@@ -24,8 +24,7 @@ services:
     container_name: 'Redis'
     volumes:
       - redis:/data
-    networks:
-      - app_net
+    network_mode: host
   # Django
   app:
     build: .
@@ -40,8 +39,8 @@ services:
       - .env
     depends_on:
       - redis
-    networks:
-      - app_net
+      - db
+    network_mode: host
   # Celery
   celery:
     build: .
@@ -55,8 +54,7 @@ services:
     volumes:
       - static:/app/static
       - media:/app/media
-    networks:
-      - app_net
+    network_mode: host
   # Nginx
   nginx:
     image: nginx:latest
@@ -75,8 +73,7 @@ services:
       - HOST=${HOST}
     depends_on:
       - app
-    networks:
-      - app_net
+    network_mode: host
 
 volumes:
   static:
@@ -84,6 +81,3 @@ volumes:
   redis:
   pgdata:
 
-networks:
-  app_net:
-    driver: bridge
