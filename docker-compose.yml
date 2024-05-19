@@ -30,7 +30,7 @@ services:
     build: .
     restart: always
     container_name: 'Backend'
-    command: /bin/bash -c "poetry run python manage.py collectstatic --noinput && poetry run python manage.py migrate && poetry run uvicorn app.asgi:application --host 0.0.0.0 --port 8000 --workers 4"
+    command: /bin/bash -c "poetry run python manage.py collectstatic --noinput && poetry run python manage.py migrate && poetry run uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 4"
     volumes:
       - .:/app
       - static:/app/static
