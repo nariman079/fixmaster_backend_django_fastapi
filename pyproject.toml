@@ -15,6 +15,8 @@ python-dotenv = "^1.0.1"
 telebot = "^0.0.5"
 drf-spectacular = "^0.27.2"
 postgres = "^4.0"
+django-celery-beat = "^2.6.0"
+drf-yasg = "^1.21.7"
 
 
 [build-system]
