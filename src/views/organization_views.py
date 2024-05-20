@@ -1,3 +1,5 @@
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -5,6 +7,7 @@ from rest_framework.views import APIView
 from src.models import Organization
 from src.serializers.organization_serializers import (OrganizationSerializer,
                                                       OrganizationDetailSerializer)
+from src.services.organization_services import get_organization_types, search_organization
 
 
 class OrganizationListView(APIView):
@@ -67,3 +70,37 @@ class OrganizationDetailView(APIView):
                 },
                 status=404
             )
+
+
+class OrganizationTypeListView(APIView):
+
+    def get(self, *args, **kwargs):
+        """ Получение списка типов организаций """
+        return get_organization_types()
+
+
+class SearchOrganization(APIView):
+    @extend_schema(
+        description='Search organization',
+        methods=["GET"],
+        parameters=[
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search text'
+            ),
+        ])
+    def get(self, *args, **kwargs):
+        """
+            search: query params from url ".../organization/?search="
+            search: string
+        """
+        if text := self.request.query_params.get('search'):
+            return search_organization(text)
+
+        return Response({
+            'message': "Запрос успешно выполнен",
+            'success': True,
+            'data': []
+        })

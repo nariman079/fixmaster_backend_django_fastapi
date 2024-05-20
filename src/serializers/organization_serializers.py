@@ -59,9 +59,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'address',
             'work_schedule',
             'is_open',
-
         )
-
 
     def get_is_open(self, organization: Organization):
         now_time = datetime.datetime.utcnow().time()
