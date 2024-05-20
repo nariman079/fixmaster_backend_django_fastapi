@@ -47,6 +47,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = (
             'id',
+            'title',
             'main_image',
             'time_begin',
             'time_end',

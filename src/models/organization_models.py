@@ -14,6 +14,8 @@ class OrganizationType(models.Model):
         verbose_name="Типы оргинизаций", max_length=255
         )
 
+    def __str__(self):
+        return self.title
 
 class Organization(models.Model):
     """
