@@ -1,3 +1,4 @@
+import datetime
 from typing import List
 import dataclasses
 from pprint import pprint
@@ -45,39 +46,46 @@ def create_datas():
    )
 
 
-
-@dataclasses.dataclass
-class Booking:
-   end_time: str
-   start_time: str
+def time_settings():
 
 
-def get_master_available_time(bookigns: list[Booking]):
-   available_times = set()
-   for booking in bookigns:
-      start = int(booking.start_time.split(':')[0])
-      end = int(booking.end_time.split(':')[0])
-      for i in range(start, end+1):
-         available_times.add(f'{i}:00')
-   return sorted(available_times)
-
-available_times = get_master_available_time(
-   [
-      Booking(start_time='12:20', end_time='15:10')
-   ]
-)
-times = [f'{i}:00' for i in range(4,20)]
+   @dataclasses.dataclass
+   class Booking:
+      end_time: str
+      start_time: str
 
 
-def is_free_time(time:str):
-   hour = time.split(':')[0]
-   all_times = map(lambda x: x.split(':')[0], available_times)
+   def get_master_available_time(bookigns: list[Booking]):
+      available_times = set()
+      for booking in bookigns:
+         start = int(booking.start_time.split(':')[0])
+         end = int(booking.end_time.split(':')[0])
+         for i in range(start, end+1):
+            available_times.add(f'{i}:00')
+      return sorted(available_times)
 
-   return   {
-      'time':time,
-      'is_free': hour not in all_times
-   }
+   available_times = get_master_available_time(
+      [
+         Booking(start_time='12:20', end_time='15:10')
+      ]
+   )
+   times = [f'{i}:00' for i in range(4,20)]
 
-free_times = [is_free_time(i) for i in times]
 
+   def is_free_time(time:str):
+      hour = time.split(':')[0]
+      all_times = map(lambda x: x.split(':')[0], available_times)
 
+      return   {
+         'time':time,
+         'is_free': hour not in all_times
+      }
+
+   free_times = [is_free_time(i) for i in times]
+
+def get_status(now_time: datetime.time ,
+               organization_close_time: datetime.time) -> dict:
+   return now_time > organization_close_time
+
+time = datetime.datetime.now().time() > datetime.time(hour=13, minute=3)
+print(time)

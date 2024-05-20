@@ -1,3 +1,5 @@
+import datetime
+
 from rest_framework import serializers
 
 from src.models import Organization, Master, Service
@@ -13,10 +15,12 @@ class MasterServiceSerializer(serializers.ModelSerializer):
             'title'
         )
 
+
 class OrganizationServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ()
+
 
 class MasterSerializer(serializers.ModelSerializer):
     services = serializers.SerializerMethodField()
@@ -42,6 +46,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     main_image = serializers.SerializerMethodField()
     time_begin = serializers.TimeField(format="%H:%M")
     time_end = serializers.TimeField(format="%H:%M")
+    is_open = serializers.SerializerMethodField()
 
     class Meta:
         model = Organization
@@ -52,8 +57,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'time_begin',
             'time_end',
             'address',
-            'work_schedule'
+            'work_schedule',
+            'is_open',
+
         )
+
+
+    def get_is_open(self, organization: Organization):
+        now_time = datetime.datetime.utcnow().time()
+        return organization.time_begin < now_time < organization.time_end
 
     def get_main_image(self, organization: Organization):
         return get_full_url(self, organization, 'main_image')
