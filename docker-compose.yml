@@ -3,19 +3,7 @@ version: '3'
 services:
   # Redis
 
-  db:
-    image: postgres:14-alpine
-    container_name: db_develop
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    network_mode: host
+
 
   redis:
     image: 'redis:alpine'
@@ -39,7 +27,6 @@ services:
       - .env
     depends_on:
       - redis
-      - db
     ports:
       - 8000:8000
     network_mode: host
@@ -82,5 +69,5 @@ volumes:
   static:
   media:
   redis:
-  pgdata:
+
 
