@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from src.models import Organization
 from src.serializers.organization_serializers import (OrganizationSerializer,
                                                       OrganizationDetailSerializer)
-from src.services.organization_services import get_organization_types, search_organization
+from src.services.organization_services import get_organization_types, search_organization, get_services_title
 
 
 class OrganizationListView(APIView):
@@ -47,6 +47,7 @@ class OrganizationDetailView(APIView):
     accessed methods: GET,
     path param: organization_id
     """
+
     def get(self, request, organization_id: int, *args, **kwargs):
         try:
             organization = Organization.objects.get(id=organization_id)
@@ -58,7 +59,7 @@ class OrganizationDetailView(APIView):
                 'message': 'Organization detail success received',
                 'success': True,
                 'data': organization_serializer.data
-                },
+            },
                 status=200
             )
         except Organization.DoesNotExist:
@@ -77,6 +78,15 @@ class OrganizationTypeListView(APIView):
     def get(self, *args, **kwargs):
         """ Получение списка типов организаций """
         return get_organization_types()
+
+
+class ServiceListView(APIView):
+    """
+    Controller for services list
+    """
+    def get(self, *args, **kwargs):
+        """ Получение списка услуг """
+        return get_services_title()
 
 
 class SearchOrganization(APIView):
