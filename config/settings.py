@@ -15,7 +15,8 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 ROOT_APPS = [
-    'src'
+    'src',
+    'bot'
 ]
 INSTALLED_APPS = [
     'django_celery_beat',

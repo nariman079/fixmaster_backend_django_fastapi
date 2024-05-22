@@ -148,19 +148,25 @@ class Customer(models.Model):
     phone = models.CharField(
         'Номер телефона',
         max_length=30,
-        null=True, blank=True
+        null=True, blank=True,
+        unique=True
         )
     username = models.CharField(
         'Имя пользователя',
         max_length=30,
         null=True, blank=True
         )
-    addidional_info = models.CharField(
+    additional_info = models.CharField(
         "Дополнительная информация",
         max_length=255,
         null=True, blank=True
     )
-    
+    user_keyword = models.CharField(
+        'Слово пароль',
+        max_length=30,
+        null=True, blank=True
+    )
+
     def __str__(self):
         return self.username
 
