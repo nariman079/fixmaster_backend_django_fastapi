@@ -19,7 +19,13 @@ class MasterServiceSerializer(serializers.ModelSerializer):
 class OrganizationServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
-        fields = ()
+        fields = (
+            'id',
+            'title',
+            'short_description',
+            'price',
+            'min_time',
+        )
 
 
 class MasterSerializer(serializers.ModelSerializer):
@@ -74,6 +80,7 @@ class OrganizationDetailSerializer(OrganizationSerializer):
 
     gallery = serializers.SerializerMethodField()
     masters = serializers.SerializerMethodField()
+    services = serializers.SerializerMethodField()
 
     class Meta:
         model = Organization
@@ -92,3 +99,10 @@ class OrganizationDetailSerializer(OrganizationSerializer):
             many=True,
             context=self.context)
         return master_serializer.data
+
+    def get_services(self, organization: Organization):
+        services = OrganizationServiceSerializer(
+            instance=Service.objects.filter(master__organization=organization),
+            many=True
+        )
+        return services.data
