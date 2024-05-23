@@ -143,7 +143,7 @@ class Customer(models.Model):
 
     telegram_id = models.CharField(
         'ID Телеграм', 
-        max_length=30, editable=False
+        max_length=30,
         )
     phone = models.CharField(
         'Номер телефона',
