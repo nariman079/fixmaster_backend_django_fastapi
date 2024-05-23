@@ -67,7 +67,7 @@ class Order(models.Model):
     customer_notice = models.CharField(
         "Коментарий",
         max_length=120,
-        default='0'
+        null=True, blank=True
     )
     payment_id = models.CharField(
         max_length=200,
