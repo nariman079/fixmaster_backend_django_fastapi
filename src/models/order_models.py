@@ -52,7 +52,7 @@ class Order(models.Model):
     )
     customer = models.ForeignKey(
         'src.Customer', 
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         verbose_name='Клиент',
         null=True, blank=True
     )
@@ -67,7 +67,7 @@ class Order(models.Model):
     customer_notice = models.CharField(
         "Коментарий",
         max_length=120,
-        null=True, blank=True
+        default='0'
     )
     payment_id = models.CharField(
         max_length=200,
