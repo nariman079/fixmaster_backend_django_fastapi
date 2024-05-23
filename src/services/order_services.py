@@ -1,16 +1,16 @@
 from datetime import time
-from typing import OrderedDict
-from pprint import pprint
 from datetime import datetime, timedelta
-from typing import Any, OrderedDict, List
+from typing import Any, OrderedDict
 
+from django.db import transaction
 from django.db.models.query import QuerySet
 from django.db.models import Sum
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from src.models import Order, Booking, Service
+from src.tasks import send_message_telegram_on_master, change_status_order
+from src.models import Order, Booking, Service, Customer
 
 
 def complete_totals(serivices: QuerySet['Service']) -> Any:
@@ -111,13 +111,51 @@ class OrderCreateSrc:
             master_id=self.master_id
         )
 
+    def _create_customer(self):
+        """ Создание клиента в БД"""
+        self.customer = Customer.objects.create(
+            phone=self.customer_phone,
+            user_keyword=self.customer_name
+        )
+
+    def _send_notification_on_master(self):
+        """ Отправка сообщания мастеру о брони """
+        send_message_telegram_on_master.delay(
+            self.master_id, self.customer_phone,
+            self.begin_date, self.begin_time
+        )
+
+    def _send_order_status_check(self):
+        """ Смена статуса брони или заказа """
+        change_in_progress_time = (datetime.combine(
+            self.begin_date, self.begin_time
+        ) - datetime.now()).total_seconds()
+
+        change_done_time = (datetime.combine(
+            self.begin_date, self.begin_time
+        ) + datetime.timedelta(minutes=30) - datetime.now()
+                            ).total_seconds()
+
+        change_status_order.apply_async(
+            (self.order.pk, 'in-progress'),
+            countdown=change_in_progress_time
+        )
+        change_status_order.apply_async(
+            (self.order.pk, 'done'),
+            countdown=(change_done_time)
+        )
+
+    @transaction.atomic
     def execute(self):
         """ Run commands """
         self._validate_booking_master()
         self._get_all_services()
         self._complete_full_time_length()
+
         self._create_order()
         self._create_booking()
+        self._send_notification_on_master()
+        self._send_order_status_check()
 
         return Response({
             'message': "Заказ успешно создан",
@@ -163,6 +201,7 @@ class FreeBookingSrc:
         """
         self.free_times = [is_free_time(i, sorted(self.available_times)) for i in self.times]
 
+    @transaction.atomic
     def execute(self):
         """
         Run commands

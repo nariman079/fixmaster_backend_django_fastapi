@@ -87,5 +87,8 @@ def get_status(now_time: datetime.time ,
                organization_close_time: datetime.time) -> dict:
    return now_time > organization_close_time
 
-time = datetime.datetime.now().time() > datetime.time(hour=13, minute=3)
-print(time)
+run_task_time = (datetime.datetime.combine(
+            datetime.datetime(day=24, year=2024, month=5).date(), datetime.datetime(day=24, year=2024, month=6, hour=0, minute=30).time()
+        ) + datetime.timedelta(minutes=30) - datetime.datetime.now()).total_seconds()
+
+print(run_task_time)

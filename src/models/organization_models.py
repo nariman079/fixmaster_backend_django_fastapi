@@ -73,7 +73,6 @@ class Master(models.Model):
     telegram_id = models.CharField(
         'ID Телеграм', max_length=30,
         default="web_user",
-        editable=False
         )
     name = models.CharField(
         'Имя', max_length=30,
@@ -144,6 +143,7 @@ class Customer(models.Model):
     telegram_id = models.CharField(
         'ID Телеграм', 
         max_length=30,
+        default='default-user'
         )
     phone = models.CharField(
         'Номер телефона',
