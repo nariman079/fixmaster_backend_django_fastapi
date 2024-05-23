@@ -1,3 +1,4 @@
+from django.utils.datastructures import MultiValueDictKeyError
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
@@ -7,15 +8,21 @@ from src.models import Customer
 class GetProfile:
     def __init__(
             self,
-            phone_number: str,
-            telegram_id: str | int,
-            username: str,
-            user_keyword: str
+            data: dict
     ):
-        self.phone_number = phone_number
-        self.username = username
-        self.telegram_id = telegram_id
-        self.user_keyword = user_keyword
+        try:
+            self.phone_number = data['phone_number']
+            self.username = data['username']
+            self.telegram_id = data['telegram_id']
+            self.user_keyword = data['user_keyword']
+        except MultiValueDictKeyError:
+            raise ValidationError(
+                {
+                    'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                    'success': False,
+                    'data': []
+                }, code=422
+            )
 
     def _get_customer_from_db(self) -> None:
         """
@@ -28,6 +35,7 @@ class GetProfile:
             })
 
     def _check_user_keyword(self):
+        """ Проверка ключегово слова """
         if self.customer.user_keyword != self.user_keyword:
             raise ValidationError(
                 {

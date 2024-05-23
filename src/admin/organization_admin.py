@@ -4,7 +4,7 @@ Setting up admin panels
 from django.contrib import admin
 from django.utils.html import format_html
 
-from src.models import Organization, OrganizationType, Image, Service, Master
+from src.models import Organization, OrganizationType, Image, Service, Master, Customer
 
 
 class ContentManagementArea(admin.AdminSite):
@@ -63,7 +63,12 @@ class OrganizationAdmin(admin.ModelAdmin):
         """
         return format_html(f"""<img src="{obj.main_image} width="100px">""")
 
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('username', 'telegram_id', 'phone')
+    list_display_links = ('username',)
+
 
 content_management_admin.register(Master, MasterAdmin)
 content_management_admin.register(Organization, OrganizationAdmin)
 content_management_admin.register(OrganizationType)
+content_management_admin.register(Customer, CustomerAdmin)
