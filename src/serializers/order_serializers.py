@@ -19,7 +19,7 @@ class OrderSerializer(serializers.Serializer):
         max_length=60,
     )
     customer_notice = serializers.CharField(
-        max_length=120, required=False
+        max_length=120, default=" "
     )
 
 
