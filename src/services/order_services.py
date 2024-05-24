@@ -142,7 +142,7 @@ class OrderCreateSrc:
         )
         change_status_order.apply_async(
             (self.order.pk, 'done'),
-            countdown=(change_done_time)
+            countdown=change_done_time
         )
 
     @transaction.atomic
