@@ -133,7 +133,7 @@ class OrderCreateSrc:
 
         change_done_time = (datetime.combine(
             self.begin_date, self.begin_time
-        ) + datetime.timedelta(minutes=30) - datetime.now()
+        ) + timedelta(minutes=30) - datetime.now()
                             ).total_seconds()
 
         change_status_order.apply_async(
