@@ -205,7 +205,7 @@ class FreeBookingSrv:
         for booking in self.bookings:
             start = time_to_int(datetime.now().time())
             end = time_to_int(booking.booking_end_time)
-            for i in range(start, end + 1):
+            for i in range(start+1, end + 1):
                 self.available_times.add(f'{i}:00')
 
     def _generate_all_times(self):
