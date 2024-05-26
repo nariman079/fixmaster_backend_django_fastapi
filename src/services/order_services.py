@@ -85,7 +85,7 @@ class OrderCreateSrv:
 
     def _complete_full_time_length(self) -> None:
         """ Complete full time length """
-        sum_total_data = complete_totals(serivices=self.serivces)
+        sum_total_data = complete_totals(services=self.serivces)
         self.summed_num = sum_total_data['total_time_length']
         self.summed_time = (datetime.combine(self.begin_date, self.begin_time
                                              ) + timedelta(minutes=sum_total_data['total_time_length'])).time()
