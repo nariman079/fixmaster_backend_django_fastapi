@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.request import Request
 
 from src.serializers.order_serializers import OrderSerializer, BookingSerializer
-from src.services.order_services import OrderCreateSrc, FreeBookingSrc
+from src.services.order_services import OrderCreateSrv, FreeBookingSrv
 
 
 class OrderCreateView(APIView):
@@ -18,7 +18,7 @@ class OrderCreateView(APIView):
 
         if isinstance(serializer.validated_data, dict):
             print(serializer)
-            order_create_srv = OrderCreateSrc(
+            order_create_srv = OrderCreateSrv(
                 serializer_validate_data=serializer.validated_data,
                 serialzier_data=serializer.data
             )
@@ -41,7 +41,7 @@ class FreeBookingView(APIView):
         serializer.is_valid(raise_exception=True)
 
         if isinstance(serializer.validated_data, dict):
-            free_booking_src = FreeBookingSrc(
+            free_booking_src = FreeBookingSrv(
                 serializer_validated_data=serializer.validated_data,
             )
             return free_booking_src.execute()

@@ -13,9 +13,9 @@ from src.tasks import send_message_telegram_on_master, change_status_order
 from src.models import Order, Booking, Service, Customer, Organization
 
 
-def complete_totals(serivices: QuerySet['Service']) -> Any:
+def complete_totals(services: QuerySet['Service']) -> Any:
     """ Complete full time length """
-    return serivices.aggregate(
+    return services.aggregate(
         total_time_length=Sum('min_time'),
         total_price=Sum('price'))
 
@@ -26,6 +26,7 @@ def time_to_int(time: time) -> int:
 
 
 def is_free_time(time: str, available_times: list[str]):
+    """ Не занятое время """
     hour = time.split(':')[0]
     all_times = map(lambda x: x.split(':')[0], available_times)
 
@@ -35,7 +36,12 @@ def is_free_time(time: str, available_times: list[str]):
     }
 
 
-class OrderCreateSrc:
+def is_retroactive_date(date):
+    """ Дата задним числом """
+    return date < datetime.now().date()
+
+
+class OrderCreateSrv:
     """
     Create order service
     """
@@ -164,7 +170,7 @@ class OrderCreateSrc:
         }, status=201)
 
 
-class FreeBookingSrc:
+class FreeBookingSrv:
     """
     Free booking dates and times
     """
@@ -172,6 +178,9 @@ class FreeBookingSrc:
     def __init__(self, serializer_validated_data: OrderedDict) -> None:
         self.date = serializer_validated_data.get('date')
         self.master_id = serializer_validated_data.get('master_id')
+
+
+
 
     def _get_master_bookings(self) -> None:
         """
@@ -210,6 +219,15 @@ class FreeBookingSrc:
         """
         Run commands
         """
+        if is_retroactive_date(self.date):
+
+            self.free_times = [{'time': i, 'is_free': False } for i in self.times]
+            return Response({
+                'message': "All times has been received",
+                'success': True,
+                'data': self.free_times
+            }, status=200)
+
         self._get_master_bookings()
         self._generate_organization_times()
         self._get_master_available_time()

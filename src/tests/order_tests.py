@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from rest_framework.test import APITestCase
 
-from src.services.order_services import OrderCreateSrc, FreeBookingSrc
+from src.services.order_services import OrderCreateSrv, FreeBookingSrv
 from src.models import Master, Service, Organization, OrganizationType
 
 def generate_image():
@@ -59,7 +59,7 @@ class OrderTestCase(APITestCase):
             customer_name="name",
             customer_notice="notice"
         )
-        order_create_srv = OrderCreateSrc(
+        order_create_srv = OrderCreateSrv(
             serialzier_data=data,
             serializer_validate_data=data
         )
@@ -75,7 +75,7 @@ class OrderTestCase(APITestCase):
             master_id=self.master.id,
             date=self.booking_test_date
         )
-        booking_times = FreeBookingSrc(
+        booking_times = FreeBookingSrv(
             data
         )
         response = booking_times.execute()
@@ -97,7 +97,7 @@ class OrderTestCase(APITestCase):
             customer_name="name",
             customer_notice="notice"
         )
-        order_create_srv = OrderCreateSrc(
+        order_create_srv = OrderCreateSrv(
             serialzier_data=data,
             serializer_validate_data=data
         )
@@ -107,7 +107,7 @@ class OrderTestCase(APITestCase):
             master_id=self.master.id,
             date=datetime(day=11, year=2023, month=12)
         )
-        booking_times = FreeBookingSrc(
+        booking_times = FreeBookingSrv(
             booking_data
         )
         response = booking_times.execute()
