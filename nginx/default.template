@@ -17,7 +17,9 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/${HOST}/privkey.pem;
 
     root /home/www;
-
+    location = /favicon.ico {
+        alias /home/www/favicon.ico;
+    }
      location / {
         index index.html;
         proxy_set_header Host $host;
