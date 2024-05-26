@@ -220,7 +220,7 @@ class FreeBookingSrv:
         Run commands
         """
         if is_retroactive_date(self.date):
-
+            self._generate_organization_times()
             self.free_times = [{'time': i, 'is_free': False } for i in self.times]
             return Response({
                 'message': "All times has been received",
