@@ -203,7 +203,7 @@ class FreeBookingSrv:
         """
         self.available_times = set()
         for booking in self.bookings:
-            start = time_to_int(booking.booking_time)
+            start = time_to_int(datetime.now().time())
             end = time_to_int(booking.booking_end_time)
             for i in range(start, end + 1):
                 self.available_times.add(f'{i}:00')
