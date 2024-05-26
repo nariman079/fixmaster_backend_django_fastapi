@@ -8,3 +8,6 @@ client_bot = TeleBot(
 master_bot = TeleBot(
     settings.FIXMASTER_MASTER_BOT_TOKEN
 )
+organization_bot = TeleBot(
+    ''
+)

@@ -10,7 +10,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from src.tasks import send_message_telegram_on_master, change_status_order
-from src.models import Order, Booking, Service, Customer
+from src.models import Order, Booking, Service, Customer, Organization
 
 
 def complete_totals(serivices: QuerySet['Service']) -> Any:
@@ -169,7 +169,7 @@ class FreeBookingSrc:
     Free booking dates and times
     """
 
-    times = [f'{i}:00' for i in range(4, 20)]
+
 
     def __init__(self, serializer_validated_data: OrderedDict) -> None:
         self.date = serializer_validated_data.get('date')
@@ -183,6 +183,11 @@ class FreeBookingSrc:
             master_id=self.master_id,
             booking_date=self.date
         )
+    def _generate_organization_times(self):
+        organization = Organization.objects.filter(master=self.master_id).first()
+        start_time = time_to_int(organization.time_begin)
+        end_time = time_to_int(organization.time_end)
+        self.times = [f'{i}:00' for i in range(start_time, end_time)]
 
     def _get_master_available_time(self):
         """
@@ -207,6 +212,7 @@ class FreeBookingSrc:
         Run commands
         """
         self._get_master_bookings()
+        self._generate_organization_times()
         self._get_master_available_time()
         self._generate_all_times()
         return Response({
