@@ -169,8 +169,6 @@ class FreeBookingSrc:
     Free booking dates and times
     """
 
-
-
     def __init__(self, serializer_validated_data: OrderedDict) -> None:
         self.date = serializer_validated_data.get('date')
         self.master_id = serializer_validated_data.get('master_id')
@@ -183,6 +181,7 @@ class FreeBookingSrc:
             master_id=self.master_id,
             booking_date=self.date
         )
+
     def _generate_organization_times(self):
         organization = Organization.objects.filter(master=self.master_id).first()
         start_time = time_to_int(organization.time_begin)

@@ -68,7 +68,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         )
 
     def get_is_open(self, organization: Organization):
-        now_time = datetime.datetime.utcnow().time()
+        now_time = datetime.datetime.now().time()
         return organization.time_begin < now_time < organization.time_end
 
     def get_main_image(self, organization: Organization):
