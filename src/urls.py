@@ -14,6 +14,6 @@ urlpatterns = [
     path('organization/search/', SearchOrganization.as_view()),
     path('organizations-types/', OrganizationTypeListView.as_view()),
     path('services/', ServiceListView.as_view()),
-    path('services/<int:master_id>', MasterListView.as_view())
+    path('master/services/', MasterListView.as_view())
 
 ]
