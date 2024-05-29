@@ -54,6 +54,15 @@ def get_services_title() -> Response:
 
 def get_master_services(master_id: int) -> Response:
     """ Get master services """
+    if master_id == 0:
+        return Response(
+            {
+                'message': "Запрос успешно выполнен",
+                'success': True,
+                'data': []
+            }, status=200
+        )
+
     queryset = Service.objects.filter(master=master_id)
     return Response(
         {

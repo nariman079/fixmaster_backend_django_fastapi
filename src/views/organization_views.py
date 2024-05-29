@@ -119,6 +119,6 @@ class SearchOrganization(APIView):
 
 
 class MasterListView(APIView):
-    def get(self, master_id: int, *args, **kwargs) -> Response:
+    def get(self, *args, **kwargs) -> Response:
         """ Получаем все услуги мастера """
-        return get_master_services(master_id)
+        return get_master_services(self.request.query_params.get('master_id', 0))
