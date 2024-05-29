@@ -7,7 +7,8 @@ from rest_framework.views import APIView
 from src.models import Organization
 from src.serializers.organization_serializers import (OrganizationSerializer,
                                                       OrganizationDetailSerializer)
-from src.services.organization_services import get_organization_types, search_organization, get_services_title
+from src.services.organization_services import get_organization_types, search_organization, get_services_title, \
+    get_master_services
 
 
 class OrganizationListView(APIView):
@@ -84,6 +85,7 @@ class ServiceListView(APIView):
     """
     Controller for services list
     """
+
     def get(self, *args, **kwargs):
         """ Получение списка услуг """
         return get_services_title()
@@ -114,3 +116,9 @@ class SearchOrganization(APIView):
             'success': True,
             'data': []
         })
+
+
+class MasterListView(APIView):
+    def get(self, master_id: int, *args, **kwargs) -> Response:
+        """ Получаем все услуги мастера """
+        return get_master_services(master_id)
