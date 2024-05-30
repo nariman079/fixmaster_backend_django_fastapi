@@ -116,6 +116,8 @@ class BotOrganizationCreateView(APIView):
             {
                 'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
                 'success': False,
-                'data': []
+                'data': [
+                    'Неверный API-KEY'
+                ]
             }, status=422
         )

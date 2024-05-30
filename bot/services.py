@@ -97,7 +97,7 @@ class BotOrganizationCreate:
             organization_data: dict
     ):
         try:
-            self.organization = OrganizationData(**organization_data)
+            self.organization = organization_data
         except Exception as error:
             raise ValidationError(
                 {
@@ -109,16 +109,15 @@ class BotOrganizationCreate:
 
     def _create_organization(self):
         try:
-            Organization.objects.create(
-                **dataclasses.asdict(self.organization)
-            )
+            Organization.objects.create(**self.organization)
+
         except Exception as error:
 
             raise ValidationError(
                 {
                     'message': "Неизвестная ошибка\nОбратитесь к администратору @nariman079i\n" ,
                     'status': False,
-                    'data':error.args
+                    'data': error.args
                 }, code=422
             )
 
@@ -128,6 +127,6 @@ class BotOrganizationCreate:
             {
                 'message': "Вы успешно авторизовались\nВы будете получать уведомления о брони",
                 'success': True,
-                'data': dataclasses.asdict(self.organization)
+                'data': self.organization
             },status=201
         )
