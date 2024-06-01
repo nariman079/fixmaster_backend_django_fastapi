@@ -4,13 +4,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bot.permissions import api_key_permission
-from bot.services import GetProfile, BotOrganizationCreate
+from bot.services import GetProfile, BotOrganizationCreate, BotModeratorGetProfile, BotVerifyOrganization, \
+    BotGetOrganizationByTelegramId
+from bot.serializers import BotOrganizationCreateSerializer, BotModeratorGetProfileSerializer
 
 
 class BotMyProfileView(APIView):
     @extend_schema(
         description='Search organization',
-        methods=["GET",],
+        methods=["GET", ],
         parameters=[
             OpenApiParameter(
                 name='Api-Key',
@@ -57,7 +59,7 @@ class BotMyProfileView(APIView):
 class BotOrganizationCreateView(APIView):
     @extend_schema(
         description='Search organization',
-        methods=["POST",],
+        methods=["POST", ],
         parameters=[
             OpenApiParameter(
                 name='Api-Key',
@@ -103,14 +105,82 @@ class BotOrganizationCreateView(APIView):
             )
         ])
     def post(self, request, *args, **kwargs) -> Response:
-        """ Получение профиля клиента """
+        """ Создание организации """
         if api_key_permission(request=self.request):
-            organization_data = self.request.data
-
+            organization_data = BotOrganizationCreateSerializer(data=self.request.data)
+            organization_data.is_valid(raise_exception=True)
             create_organization = BotOrganizationCreate(
-                organization_data=organization_data
+                organization_data=organization_data.validated_data
             )
             return create_organization.execute()
+
+        return Response(
+            {
+                'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                'success': False,
+                'data': [
+                    'Неверный API-KEY'
+                ]
+            }, status=422
+        )
+
+
+class BotModeratorGetProfileView(APIView):
+    def post(self, request, *args, **kwargs) -> Response:
+        """ Создание организации """
+        if api_key_permission(request=self.request):
+            moderator_data = BotModeratorGetProfileSerializer(data=self.request.data)
+            moderator_data.is_valid(raise_exception=True)
+            moderator_get_profile = BotModeratorGetProfile(
+                moderator_data=moderator_data.validated_data
+            )
+            return moderator_get_profile.execute()
+
+        return Response(
+            {
+                'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                'success': False,
+                'data': [
+                    'Неверный API-KEY'
+                ]
+            }, status=422
+        )
+
+
+class BotVerifyOrganizationView(APIView):
+    def post(self, request, *args, **kwargs):
+        if api_key_permission(request=self.request):
+            verify_organization_data = dict(
+                organization_id=kwargs.get('organization_id'),
+                is_verify=self.request.data.get('is_verify')
+            )
+            verify_organization = BotVerifyOrganization(
+                verify_organization_data=verify_organization_data
+            )
+            return verify_organization.execute()
+
+        return Response(
+            {
+                'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                'success': False,
+                'data': [
+                    'Неверный API-KEY'
+                ]
+            }, status=422
+        )
+
+
+class BotGetOrganizationByTelegramIdView(APIView):
+    def get(self, *args, **kwargs):
+        if api_key_permission(request=self.request):
+            organization_data = dict(
+                telegram_id=kwargs.get('telegram_id')
+            )
+
+            get_organization_by_telegram_id = BotGetOrganizationByTelegramId(
+                organization_data=organization_data
+            )
+            return get_organization_by_telegram_id.execute()
 
         return Response(
             {

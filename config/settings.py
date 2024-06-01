@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "corsheaders",
     'drf_spectacular',
     'drf_spectacular_sidecar',
+    'django_extensions',
     *ROOT_APPS
 ]
 MIDDLEWARE = [
@@ -162,3 +163,5 @@ CELERY_TIMEZONE = 'Europe/Moscow'
 
 FIXMASTER_CLIENT_BOT_TOKEN = os.getenv('FIXMASTER_CLIENT_BOT_TOKEN')
 FIXMASTER_MASTER_BOT_TOKEN = os.getenv('FIXMASTER_MASTER_BOT_TOKEN')
+FIXMASTER_MODERATOR_BOT_TOKEN = os.getenv('FIXMASTER_MODERATOR_BOT_TOKEN')
+FIXMASTER_ORGANIZATION_BOT_TOKEN = os.getenv('FIXMASTER_ORGANIZATION_BOT_TOKEN')
