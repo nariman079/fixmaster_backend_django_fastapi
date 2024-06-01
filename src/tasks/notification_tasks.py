@@ -66,6 +66,7 @@ def send_message_on_moderator_about_organization(
     )
     moderator_inline_markup.add(verify_true_button)
     moderator_inline_markup.add(verify_false_button)
+    print(moderator.telegram_id, message)
     moderator_bot.send_message(
         chat_id=moderator.telegram_id,
         text=message,
