@@ -1,7 +1,7 @@
 import random
 
 from django.db import models
-
+from config.settings import cache
 from src.enums import statuses
 
 
@@ -71,6 +71,9 @@ class Organization(models.Model):
     def __str__(self):
         return self.title
 
+    def save(self, *args, **kwargs):
+        cache.delete(str(self.telegram_id))
+        super().save(*args, **kwargs)
 
 class Master(models.Model):
     """
@@ -97,6 +100,12 @@ class Master(models.Model):
     )
     image = models.ImageField(
         'Изображние', upload_to='master',
+        null=True, blank=True
+    )
+    image_url = models.CharField(
+        'Ссылка на изображение',
+        max_length=255,
+        null=True, blank=True
     )
     gender = models.CharField(
         'Пол', max_length=30,
@@ -119,7 +128,9 @@ class Master(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            pass
+            print("hell")
+            # da = cache.__delitem__(str(self.organization.telegram_id))
+            
         else:
             self.code = random.randint(10000, 99999)
         return super().save(*args, **kwargs)
@@ -195,6 +206,8 @@ class Customer(models.Model):
     def __str__(self):
         return self.username
 
+    
+
 
 class Moderator(models.Model):
 
@@ -221,6 +234,7 @@ class Moderator(models.Model):
         if self.pk:
             pass
         else:
+            
             self.code = random.randint(10000, 99999)
         return super().save(*args, **kwargs)
 

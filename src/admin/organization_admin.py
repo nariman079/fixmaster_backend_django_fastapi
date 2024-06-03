@@ -34,19 +34,12 @@ class OrganizationImageInlinel(admin.TabularInline):
 # Model admins
 class MasterAdmin(admin.ModelAdmin):
     """ Master model admin """
-    list_display = ('avatar', 'name', 'surname', 'gender')
+    list_display = ('name', 'surname', 'gender')
+    list_display_links = ('name',)
 
     inlines = [
         MasterServiceTabularInilne
     ]
-
-    def avatar(self, obj: Master):
-        """ 
-        Generating image for the admin panel of the wizard 
-        """
-        print(obj.image.__dict__)
-        return format_html(f"""<img src="{obj.image.url} width="100px">""")
-
 
 class OrganizationAdmin(admin.ModelAdmin):
     """ Master model admin """

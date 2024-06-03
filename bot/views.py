@@ -4,9 +4,25 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bot.permissions import api_key_permission
-from bot.services import GetProfile, BotOrganizationCreate, BotModeratorGetProfile, BotVerifyOrganization, \
-    BotGetOrganizationByTelegramId
-from bot.serializers import BotOrganizationCreateSerializer, BotModeratorGetProfileSerializer
+from bot.services import (GetProfile, 
+                            BotOrganizationCreate, 
+                            BotModeratorGetProfile, 
+                            BotVerifyOrganization, 
+                            BotGetOrganizationByTelegramId, 
+                            BotGetOrganizationDataByTelegramId, 
+                            MasterDeleteSrv, 
+                            MasterCreateSrv,
+                            MasterEditSrv,
+                            MasterServiceCreateSrv,
+                            MasterServiceDeleteSrv,
+                            MasterServiceDetailSrv,
+                            MasterServiceListSrv
+                            )
+from bot.serializers import (BotOrganizationCreateSerializer, 
+                            BotModeratorGetProfileSerializer,
+                            MasterCreateSerializer,
+                            MasterEditSerializer,
+                            MasterServiceCreateSerializer)
 
 
 class BotMyProfileView(APIView):
@@ -191,3 +207,154 @@ class BotGetOrganizationByTelegramIdView(APIView):
                 ]
             }, status=422
         )
+
+class BotGetOrganizationDataByTelegramIdView(APIView):
+    def get(self, *args, **kwargs):
+        if api_key_permission(request=self.request):
+            organization_data = dict(
+                telegram_id=kwargs.get('telegram_id')
+            )
+            get_organization_by_telegram_id = BotGetOrganizationDataByTelegramId(
+                organization_data=organization_data
+            )
+            return get_organization_by_telegram_id.execute()
+
+        return Response(
+            {
+                'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                'success': False,
+                'data': [
+                    'Неверный API-KEY'
+                ]
+            }, status=422
+        )
+
+class MasterActionView(APIView):
+    def post(self, request, *args, **kwargs):
+        if api_key_permission(request=self.request):
+            serializer = MasterCreateSerializer(
+                data=self.request.data
+            )
+            serializer.is_valid(raise_exception=True)
+            create_master = MasterCreateSrv(
+                master_data=serializer.validated_data
+            )
+            return create_master.execute()
+
+        return Response(
+            {
+                'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                'success': False,
+                'data': [
+                    'Неверный API-KEY'
+                ]
+            }, status=422
+        )
+
+    def patch(self, request, *args , **kwargs):
+        if api_key_permission(request=self.request):
+            serializer = MasterEditSerializer(
+                data=self.request.data
+            )
+            serializer.is_valid(raise_exception=True)
+            create_master = MasterEditSrv(
+                master_data=serializer.validated_data,
+                master_id=kwargs.get('master_id')
+            )
+            return create_master.execute()
+
+        return Response(
+            {
+                'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                'success': False,
+                'data': [
+                    'Неверный API-KEY'
+                ]
+            }, status=422
+        )
+
+    def delete(self, request, *args, **kwargs):
+        if api_key_permission(request=self.request):
+            master_id = kwargs.get('master_id')
+            delete_master = MasterDeleteSrv(
+                master_id=master_id
+            )
+            return delete_master.execute()
+
+        return Response(
+            {
+                'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                'success': False,
+                'data': [
+                    'Неверный API-KEY'
+                ]
+            }, status=422
+        )
+
+class ServiceActionView(APIView):
+    def get(self, request, *args, **kwargs):
+        if api_key_permission(self.request):
+            service_id = self.request.query_params.get('service_id')
+            master_id = kwargs.get('master_id')
+            if service_id:
+                master_service_detail = MasterServiceDetailSrv(
+                service_id=service_id
+                )
+                return master_service_detail.execute()
+            else:
+                master_service_list = MasterServiceListSrv(
+                    master_id=master_id
+                )
+                return master_service_list.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success':False,
+            'data':[]
+        })
+
+
+    def post(self, request, *args, **kwargs):
+        if api_key_permission(self.request):
+            master_id = kwargs.get('master_id', None)
+            serializer = MasterServiceCreateSerializer(
+                    data=self.request.data
+                )
+            serializer.is_valid(raise_exception=True)
+            master_service_create = MasterServiceCreateSrv(
+                master_id=master_id,
+                service_data=serializer.validated_data
+            )
+            return master_service_create.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success':False,
+            'data':[]
+        })
+
+    
+    def patch(self, request, *args, **kwargs):
+        if api_key_permission(self.request):
+            service_id = kwargs.get('service_id', None)
+            master_service_edit = MasterServiceEditSrv(
+                service_id=service_id,
+                service_data=self.request.data
+            )
+            return master_service_edit.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success':False,
+            'data':[]
+        })
+    
+    def delete(self, request, *args, **kwargs):
+        if api_key_permission(self.request):
+            service_id = kwargs.get('service_id', None)
+            master_service_delete = MasterServiceDeleteSrv(
+                service_id=service_id,
+            )
+            return master_service_delete.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success':False,
+            'data':[]
+        })

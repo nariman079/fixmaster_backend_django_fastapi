@@ -30,7 +30,8 @@ class OrganizationServiceSerializer(serializers.ModelSerializer):
 
 class MasterSerializer(serializers.ModelSerializer):
     services = serializers.SerializerMethodField()
-
+    image = serializers.SerializerMethodField()
+    
     class Meta:
         model = Master
         fields = (
@@ -40,12 +41,15 @@ class MasterSerializer(serializers.ModelSerializer):
             'surname',
             'services'
         )
+    
 
     def get_services(self, master: Master):
         return MasterServiceSerializer(
             instance=master.service_set.all(),
             many=True).data[:3]
 
+    def get_image(self, obj):
+        return get_full_url(self, obj, 'image')
 
 class OrganizationSerializer(serializers.ModelSerializer):
     """ Serializer for the organization's list page """
