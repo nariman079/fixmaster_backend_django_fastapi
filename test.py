@@ -2,7 +2,7 @@
 # from typing import List
 # import dataclasses
 # from pprint import pprint
-
+import os
 
 # def create_datas():
 #    from datetime import datetime, time, date
@@ -92,22 +92,33 @@
 #         ) + datetime.timedelta(minutes=30) - datetime.datetime.now()).total_seconds()
 
 # print(run_task_time)
-import asyncio
+import telebot
+from dotenv import load_dotenv
+
+bot = telebot.TeleBot(os.getenv('FIXMASTER_ORGANIZATION_BOT_TOKEN'))
+
+load_dotenv()
+
 n = 10
 
 s = []
 
-async def f():
-   for j in range(1, 100000):
-      devs = 0
-      for i in range(1, j + 1):
-         if j % i == 0 and i != j:
-            devs += i
-            print(j)
-      if devs == j:
-         print(devs, "##################################3")
-         s.append(devs)
+
+def f():
+    for j in range(1, 1000000):
+        devs = 0
+        for i in range(1, j + 1):
+            if j % i == 0 and i != j:
+                devs += i
+                print(j)
+        if devs == j:
+            print(devs, "##################################3")
+            bot.send_message(
+               chat_id='1807334234',
+               text=f'{devs}'
+            )
+            s.append(devs)
 
 
-asyncio.run(f())
+f()
 print(s)
