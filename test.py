@@ -1,94 +1,113 @@
-import datetime
-from typing import List
-import dataclasses
-from pprint import pprint
+# import datetime
+# from typing import List
+# import dataclasses
+# from pprint import pprint
 
 
-def create_datas():
-   from datetime import datetime, time, date
-   from typing import OrderedDict
-   from django.core.files.uploadedfile import SimpleUploadedFile
-   from rest_framework.test import APITestCase
+# def create_datas():
+#    from datetime import datetime, time, date
+#    from typing import OrderedDict
+#    from django.core.files.uploadedfile import SimpleUploadedFile
+#    from rest_framework.test import APITestCase
 
-   from src.models import Master, Service, Organization, OrganizationType
-   def generate_image():
-    return SimpleUploadedFile(
-            name='image.png',
-            content=open('image.png', 'rb').read(),
-            content_type='image/png'
-        )
+#    from src.models import Master, Service, Organization, OrganizationType
+#    def generate_image():
+#     return SimpleUploadedFile(
+#             name='image.png',
+#             content=open('image.png', 'rb').read(),
+#             content_type='image/png'
+#         )
 
-   organization_type = OrganizationType.objects.create(
-      title="orgnization_type"
-   )
-   organization = Organization.objects.create(
-      title='title',
-      main_image=generate_image(),
-      is_verified=True,
-      address="address",
-      contact_phone="9999",
-      time_begin=datetime.now().time(), 
-      time_end=datetime.now().time(),
-      work_schedule="5/2",
-      organization_type_id=organization_type.id,
-   )
-   master = Master.objects.create(
-      name="test",
-      surname="test",
-      image=generate_image(),
-      organization=organization
-   )
-   service = Service.objects.create(
-      master=master,
-      title="title",
-      price=10,
-      min_time=30
-   )
-
-
-def time_settings():
+#    organization_type = OrganizationType.objects.create(
+#       title="orgnization_type"
+#    )
+#    organization = Organization.objects.create(
+#       title='title',
+#       main_image=generate_image(),
+#       is_verified=True,
+#       address="address",
+#       contact_phone="9999",
+#       time_begin=datetime.now().time(), 
+#       time_end=datetime.now().time(),
+#       work_schedule="5/2",
+#       organization_type_id=organization_type.id,
+#    )
+#    master = Master.objects.create(
+#       name="test",
+#       surname="test",
+#       image=generate_image(),
+#       organization=organization
+#    )
+#    service = Service.objects.create(
+#       master=master,
+#       title="title",
+#       price=10,
+#       min_time=30
+#    )
 
 
-   @dataclasses.dataclass
-   class Booking:
-      end_time: str
-      start_time: str
+# def time_settings():
 
 
-   def get_master_available_time(bookigns: list[Booking]):
-      available_times = set()
-      for booking in bookigns:
-         start = int(booking.start_time.split(':')[0])
-         end = int(booking.end_time.split(':')[0])
-         for i in range(start, end+1):
-            available_times.add(f'{i}:00')
-      return sorted(available_times)
-
-   available_times = get_master_available_time(
-      [
-         Booking(start_time='12:20', end_time='15:10')
-      ]
-   )
-   times = [f'{i}:00' for i in range(4,20)]
+#    @dataclasses.dataclass
+#    class Booking:
+#       end_time: str
+#       start_time: str
 
 
-   def is_free_time(time:str):
-      hour = time.split(':')[0]
-      all_times = map(lambda x: x.split(':')[0], available_times)
+#    def get_master_available_time(bookigns: list[Booking]):
+#       available_times = set()
+#       for booking in bookigns:
+#          start = int(booking.start_time.split(':')[0])
+#          end = int(booking.end_time.split(':')[0])
+#          for i in range(start, end+1):
+#             available_times.add(f'{i}:00')
+#       return sorted(available_times)
 
-      return   {
-         'time':time,
-         'is_free': hour not in all_times
-      }
+#    available_times = get_master_available_time(
+#       [
+#          Booking(start_time='12:20', end_time='15:10')
+#       ]
+#    )
+#    times = [f'{i}:00' for i in range(4,20)]
 
-   free_times = [is_free_time(i) for i in times]
 
-def get_status(now_time: datetime.time ,
-               organization_close_time: datetime.time) -> dict:
-   return now_time > organization_close_time
+#    def is_free_time(time:str):
+#       hour = time.split(':')[0]
+#       all_times = map(lambda x: x.split(':')[0], available_times)
 
-run_task_time = (datetime.datetime.combine(
-            datetime.datetime(day=24, year=2024, month=5).date(), datetime.datetime(day=24, year=2024, month=6, hour=0, minute=30).time()
-        ) + datetime.timedelta(minutes=30) - datetime.datetime.now()).total_seconds()
+#       return   {
+#          'time':time,
+#          'is_free': hour not in all_times
+#       }
 
-print(run_task_time)
+#    free_times = [is_free_time(i) for i in times]
+
+# def get_status(now_time: datetime.time ,
+#                organization_close_time: datetime.time) -> dict:
+#    return now_time > organization_close_time
+
+# run_task_time = (datetime.datetime.combine(
+#             datetime.datetime(day=24, year=2024, month=5).date(), datetime.datetime(day=24, year=2024, month=6, hour=0, minute=30).time()
+#         ) + datetime.timedelta(minutes=30) - datetime.datetime.now()).total_seconds()
+
+# print(run_task_time)
+import asyncio
+n = 10
+
+s = []
+
+async def f():
+   for j in range(1, 100000):
+      devs = 0
+      for i in range(1, j + 1):
+         if j % i == 0 and i != j:
+            devs += i
+            print(j)
+      if devs == j:
+         print(devs, "##################################3")
+         s.append(devs)
+
+
+asyncio.run(f())
+print(s)
