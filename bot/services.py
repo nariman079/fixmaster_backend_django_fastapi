@@ -4,7 +4,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from src.serializers.organization_serializers import OrganizationDetailSerializer
-from src.models import Customer, Organization, Master, Moderator
+from src.models import Customer, Organization, Master, Moderator, Service
 from src.tasks import (send_message_telegram_on_master,
                        send_message_on_moderator_about_organization,
                        send_is_verified_organization)
@@ -408,6 +408,7 @@ class MasterServiceListSrv:
             'short_description',
             'price',
             'min_time',
+            'master_id'
         )
     
     def execute(self):
@@ -502,6 +503,7 @@ class MasterServiceDetailSrv:
             'short_description',
             'price',
             'min_time',
+            'master_id'
         ).first()
 
     def execute(self):

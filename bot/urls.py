@@ -26,5 +26,5 @@ urlpatterns = [
      path('masters/<int:master_id>', MasterActionView.as_view()),
      path('masters/', MasterActionView.as_view()),
      path('masters/<int:master_id>/services/', ServiceActionView.as_view()),
-     path('service/<int:service_id>', ServiceActionView.as_view())
+     path('service/', ServiceActionView.as_view())
 ]

@@ -348,10 +348,11 @@ class ServiceActionView(APIView):
     
     def delete(self, request, *args, **kwargs):
         if api_key_permission(self.request):
-            service_id = kwargs.get('service_id', None)
-            master_service_delete = MasterServiceDeleteSrv(
-                service_id=service_id,
-            )
+            service_id = self.request.query_params.get('service_id', None)
+            if service_id:
+                master_service_delete = MasterServiceDeleteSrv(
+                    service_id=service_id,
+                )
             return master_service_delete.execute()
         return Response({
             'message': "Api-Key error",
