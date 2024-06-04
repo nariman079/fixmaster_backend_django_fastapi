@@ -455,7 +455,7 @@ class MasterServiceEditSrv:
         self.service_data = kwargs.get('service_data')
     
     def get_and_update_service(self):
-        self.service = Master.objects.filter(pk=self.service_id)
+        self.service = Service.objects.filter(pk=self.service_id)
         self.service.update(**self.service_data)
     
     def execute(self):
@@ -464,8 +464,7 @@ class MasterServiceEditSrv:
             'message':"Запрос прошел успешно",
             'success': True,
             'data': {}
-        },200
-        )
+        },200)
 
 class MasterServiceDeleteSrv:
     def __init__(self, *args, **kwargs):

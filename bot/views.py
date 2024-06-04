@@ -16,7 +16,8 @@ from bot.services import (GetProfile,
                             MasterServiceCreateSrv,
                             MasterServiceDeleteSrv,
                             MasterServiceDetailSrv,
-                            MasterServiceListSrv
+                            MasterServiceListSrv,
+                            MasterServiceEditSrv
                             )
 from bot.serializers import (BotOrganizationCreateSerializer, 
                             BotModeratorGetProfileSerializer,
@@ -334,7 +335,7 @@ class ServiceActionView(APIView):
     
     def patch(self, request, *args, **kwargs):
         if api_key_permission(self.request):
-            service_id = kwargs.get('service_id', None)
+            service_id = self.request.query_params.get('service_id', None)
             master_service_edit = MasterServiceEditSrv(
                 service_id=service_id,
                 service_data=self.request.data
