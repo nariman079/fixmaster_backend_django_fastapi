@@ -1,29 +1,31 @@
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiRequest, extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bot.permissions import api_key_permission
-from bot.services import (GetProfile, 
-                            BotOrganizationCreate, 
-                            BotModeratorGetProfile, 
-                            BotVerifyOrganization, 
-                            BotGetOrganizationByTelegramId, 
-                            BotGetOrganizationDataByTelegramId, 
-                            MasterDeleteSrv, 
-                            MasterCreateSrv,
-                            MasterEditSrv,
-                            MasterServiceCreateSrv,
-                            MasterServiceDeleteSrv,
-                            MasterServiceDetailSrv,
-                            MasterServiceListSrv,
-                            MasterServiceEditSrv
-                            )
-from bot.serializers import (BotOrganizationCreateSerializer, 
-                            BotModeratorGetProfileSerializer,
-                            MasterCreateSerializer,
-                            MasterEditSerializer,
-                            MasterServiceCreateSerializer)
+from bot.services import (GetProfile,
+                          BotOrganizationCreate,
+                          BotModeratorGetProfile,
+                          BotVerifyOrganization,
+                          BotGetOrganizationByTelegramId,
+                          BotGetOrganizationDataByTelegramId,
+                          MasterDeleteSrv,
+                          MasterCreateSrv,
+                          MasterEditSrv,
+                          MasterServiceCreateSrv,
+                          MasterServiceDeleteSrv,
+                          MasterServiceDetailSrv,
+                          MasterServiceListSrv,
+                          MasterServiceEditSrv,
+                          MasterVerifySrv,
+                          MasterCustomers, MasterNextSessionSrv
+                          )
+from bot.serializers import (BotOrganizationCreateSerializer,
+                             BotModeratorGetProfileSerializer,
+                             MasterCreateSerializer,
+                             MasterEditSerializer,
+                             MasterServiceCreateSerializer, MasterVerifySerializer)
 
 
 class BotMyProfileView(APIView):
@@ -360,3 +362,63 @@ class ServiceActionView(APIView):
             'success':False,
             'data':[]
         })
+
+
+class MasterVerifyView(APIView):
+
+    @extend_schema(
+    description = 'Verfy master',
+    methods = ["POST", ],
+    request = [
+        OpenApiRequest(
+
+        )])
+    def post(self, request, *args, **kwargs):
+        serializer = MasterVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if api_key_permission(self.request):
+            master_verify = MasterVerifySrv(
+                **serializer.validated_data
+            )
+            return master_verify.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success': False,
+            'data': []
+        }, 401)
+
+class MasterCustomerView(APIView):
+    def get(self, request, *args, **kwargs):
+        telegram_id = self.kwargs.get('telegram_id')
+
+        if api_key_permission(self.request):
+            master_customers = MasterCustomers(
+               serializer_data={
+                    'telegram_id': telegram_id
+                }
+            )
+            return master_customers.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success': False,
+            'data': []
+        }, 401)
+
+
+class MasterNextSessionView(APIView):
+    def get(self, request, *args, **kwargs):
+        telegram_id = self.kwargs.get('telegram_id')
+
+        if api_key_permission(self.request):
+            master_customers = MasterNextSessionSrv(
+                serializer_data={
+                    'telegram_id': telegram_id
+                }
+            )
+            return master_customers.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success': False,
+            'data': []
+        }, 401)
+

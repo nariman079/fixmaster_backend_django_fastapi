@@ -23,7 +23,7 @@ class OrganizationListView(APIView):
         try:
             organization_queryset = Organization.objects.filter(
                 **self.request.query_params.dict()
-            )
+            ).filter(is_verified=True)
             organization_serializer = OrganizationSerializer(
                 instance=organization_queryset,
                 many=True,

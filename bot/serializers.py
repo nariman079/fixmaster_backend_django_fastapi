@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 
 class BotOrganizationCreateSerializer(serializers.Serializer):
-    telegram_id = serializers.CharField() 
+    telegram_id = serializers.CharField()
     title = serializers.CharField()
     main_image_url = serializers.CharField()
     address = serializers.CharField()
@@ -35,9 +35,9 @@ class MasterEditSerializer(serializers.Serializer):
 
 class MasterServiceCreateSerializer(serializers.Serializer):
     title = serializers.CharField()
-    short_description= serializers.CharField()
+    short_description = serializers.CharField()
     price = serializers.CharField()
-    min_time= serializers.CharField()
+    min_time = serializers.CharField()
 
 
 class MasterServiceEditSerializer(serializers.Serializer):
@@ -45,3 +45,8 @@ class MasterServiceEditSerializer(serializers.Serializer):
     short_description = serializers.CharField(required=False)
     price = serializers.IntegerField(required=False)
     min_time = serializers.CharField(required=False)
+
+
+class MasterVerifySerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=200)
+    telegram_id = serializers.CharField(max_length=100)

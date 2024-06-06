@@ -131,32 +131,32 @@ SPECTACULAR_SETTINGS = {
     'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
     'REDOC_DIST': 'SIDECAR',
 }
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "main": {
-            'format': '[%(asctime)s] %(levelname)s %(message)s',
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-            "style": "%",
-        },
-    },
-    "handlers": {
-        "file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            'filename': os.path.join(LOGGING_DIR, 'django.log'),
-            "formatter": "main",
-        },
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["file"],
-            "level": "INFO",
-            "propagate": True,
-        },
-    },
-}
+# LOGGING = {
+#     "version": 1,
+#     "disable_existing_loggers": False,
+#     "formatters": {
+#         "main": {
+#             'format': '[%(asctime)s] %(levelname)s %(message)s',
+#             "datefmt": "%Y-%m-%d %H:%M:%S",
+#             "style": "%",
+#         },
+#     },
+#     "handlers": {
+#         "file": {
+#             "level": "INFO",
+#             "class": "logging.FileHandler",
+#             'filename': os.path.join(LOGGING_DIR, 'django.log'),
+#             "formatter": "main",
+#         },
+#     },
+#     "loggers": {
+#         "django": {
+#             "handlers": ["file"],
+#             "level": "INFO",
+#             "propagate": True,
+#         },
+#     },
+# }
 
 import pickle
 

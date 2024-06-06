@@ -121,7 +121,8 @@ class OrderCreateSrv:
         """ Создание клиента в БД"""
         self.customer = Customer.objects.create(
             phone=self.customer_phone,
-            user_keyword=self.customer_name
+            user_keyword=self.customer_name,
+            master_id=self.master_id
         )
 
     def _send_notification_on_master(self):

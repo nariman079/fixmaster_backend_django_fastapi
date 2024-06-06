@@ -9,7 +9,7 @@ def callback_verify_true_organization(organization_id: int) -> str:
     return f"organization_verify_true_{organization_id}"
 
 
-def callback_verify_false_organization(organization_id:int) -> str:
+def callback_verify_false_organization(organization_id: int) -> str:
     return f"organization_verify_false_{organization_id}"
 
 
@@ -41,9 +41,25 @@ def send_message_telegram_on_master(
 
 
 @shared_task
+def send_message_about_verify_master(
+        master_id: int,
+):
+    """
+    Отправка сообщения Мастеру о бронировании
+    """
+    master = Master.objects.get(id=master_id)
+    text = f"✅ Мастер {master.name} {master.surname} зарегистрировался в системе \n"
+    organization_bot.send_message(
+        chat_id=master.organization.telegram_id,
+        text=text
+    )
+
+
+@shared_task
 def send_message_on_moderator_about_organization(
         organization_id: int
 ):
+    """ Отправка сообщения модератору о регистрации новой организации """
     organization = Organization.objects.get(pk=organization_id)
     moderator = get_moderator_for_send_message()
 
@@ -58,15 +74,18 @@ def send_message_on_moderator_about_organization(
     moderator_inline_markup = types.InlineKeyboardMarkup()
     verify_true_button = types.InlineKeyboardButton(
         '✅ Верифицировать',
-        callback_data=callback_verify_true_organization(organization_id),
+        callback_data=callback_verify_true_organization(
+            organization_id
+        ),
     )
     verify_false_button = types.InlineKeyboardButton(
         '❌ Не верифицировать',
-        callback_data=callback_verify_false_organization(organization_id)
+        callback_data=callback_verify_false_organization(
+            organization_id
+        )
     )
     moderator_inline_markup.add(verify_true_button)
     moderator_inline_markup.add(verify_false_button)
-    print(moderator.telegram_id, message)
     moderator_bot.send_message(
         chat_id=moderator.telegram_id,
         text=message,
@@ -79,6 +98,7 @@ def send_is_verified_organization(
         organization_id: int,
         is_verify: bool,
 ):
+    """ Отправка сообщения о регистрации новой организации """
     organization = Organization.objects.get(pk=organization_id)
     if is_verify:
         message = """Хорошая новость! ❇️❇️❇️
@@ -90,12 +110,10 @@ def send_is_verified_organization(
         master_list = types.KeyboardButton("📃 Список мастеров")
         client_list = types.KeyboardButton('👥 Список клиентов')
         add_master = types.KeyboardButton('➕ Добавить мастера')
-        add_service = types.KeyboardButton('➕ Добавить услугу')
 
         organization_menu_markup.add(master_list)
         organization_menu_markup.add(client_list)
         organization_menu_markup.add(add_master)
-        organization_menu_markup.add(add_service)
 
         organization_bot.send_message(
             chat_id=organization.telegram_id,
@@ -103,9 +121,10 @@ def send_is_verified_organization(
             reply_markup=organization_menu_markup
         )
     else:
-        message = (f'Ваша организация не прошла верификацию!‼️\n'
-                    'Заполните данные еще раз - /start')
-        
+        message = (
+            'Ваша организация не прошла верификацию!‼️\n'
+            'Заполните данные еще раз - /start'
+        )
         organization_bot.send_message(
             chat_id=organization.telegram_id,
             text=message,

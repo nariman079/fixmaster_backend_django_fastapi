@@ -4,7 +4,7 @@ Setting up admin panels
 from django.contrib import admin
 from django.utils.html import format_html
 
-from src.models import Organization, OrganizationType, Image, Service, Master, Customer, Moderator
+from src.models import Organization, OrganizationType, Image, Service, Master, Customer, Moderator, Booking
 
 
 class ContentManagementArea(admin.AdminSite):
@@ -61,3 +61,4 @@ content_management_admin.register(Master, MasterAdmin)
 content_management_admin.register(Organization, OrganizationAdmin)
 content_management_admin.register(OrganizationType)
 content_management_admin.register(Customer, CustomerAdmin)
+content_management_admin.register(Booking)

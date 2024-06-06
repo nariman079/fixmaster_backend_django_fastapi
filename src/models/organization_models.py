@@ -1,4 +1,5 @@
 import random
+import uuid
 
 from django.db import models
 from config.settings import cache
@@ -71,9 +72,7 @@ class Organization(models.Model):
     def __str__(self):
         return self.title
 
-    def save(self, *args, **kwargs):
-        cache.delete(str(self.telegram_id))
-        super().save(*args, **kwargs)
+
 
 class Master(models.Model):
     """
@@ -88,8 +87,9 @@ class Master(models.Model):
         'ID Телеграм', max_length=30,
         default="web_user",
     )
-    code = models.IntegerField(
-        "Слово пароль",
+    code = models.CharField(
+        "Код для регистрации",
+        max_length=200,
         null=True, blank=True
     )
     name = models.CharField(
@@ -128,11 +128,9 @@ class Master(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            print("hell")
-            # da = cache.__delitem__(str(self.organization.telegram_id))
-            
+            pass
         else:
-            self.code = random.randint(10000, 99999)
+            self.code = uuid.uuid4().__str__()
         return super().save(*args, **kwargs)
 
 
@@ -200,6 +198,11 @@ class Customer(models.Model):
     user_keyword = models.CharField(
         'Слово пароль',
         max_length=30,
+        null=True, blank=True
+    )
+    master = models.ForeignKey(
+        'src.Master',
+        on_delete=models.SET_NULL,
         null=True, blank=True
     )
 

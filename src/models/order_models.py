@@ -17,7 +17,7 @@ class Booking(models.Model):
         )
     booking_end_time = models.TimeField(
         "Длительность процедуры",
-        editable=False
+
     )
     master = models.ForeignKey(
         'src.Master', on_delete=models.CASCADE, 
@@ -31,16 +31,15 @@ class Order(models.Model):
     """ Заказы """
 
     class Meta:
-
         verbose_name = 'Заказ'
         verbose_name_plural = 'Заказы'
 
     begin_date = models.DateField(
         'Дата начала',
-        )
+    )
     begin_time = models.TimeField(
         'Время начала', 
-        )
+    )
     length_time = models.IntegerField(
         "Длительность процедуры",
         null=True, blank=True, editable=False
