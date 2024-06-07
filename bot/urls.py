@@ -10,9 +10,10 @@ from bot.views import (BotMyProfileView,
                        MasterVerifyView,
                        MasterCustomerView, MasterNextSessionView
                        )
-
+from bot.webhook_view import webhook_organization
 
 urlpatterns = [
+    path('telegram/webhook/', webhook_organization),
     path('get-my-profile/', BotMyProfileView.as_view(),
          name='get-profile'),
     path('organization/create/', BotOrganizationCreateView.as_view(),
