@@ -676,13 +676,15 @@ class MasterNextSessionSrv:
 
     def get_master_bookings(self):
         self.booking = (
-            self.master.booking_set.all()
+            self.master.booking_set.filter(
+                booking_date__gte=datetime.now().date(),
+                booking_time__gte=datetime.now().time())
             .order_by('booking_date')
             .order_by('booking_time')
         ).annotate(
             start_time=F('booking_time'),
             start_date=F('booking_date')
-        ).values('start_time', 'start_date').last()
+        ).values('start_time', 'start_date').first()
 
     def complete_time(self):
         self.next_time = next_session(**self.booking)
