@@ -11,7 +11,7 @@ class BotOrganizationCreateSerializer(serializers.Serializer):
     time_end = serializers.CharField()
     work_schedule = serializers.CharField()
     organization_type_id = serializers.IntegerField()
-
+    gallery = serializers.ListField(child=serializers.CharField())
 
 class BotModeratorGetProfileSerializer(serializers.Serializer):
     telegram_id = serializers.CharField()

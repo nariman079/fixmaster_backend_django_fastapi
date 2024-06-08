@@ -18,8 +18,13 @@ class Image(models.Model):
         on_delete=models.CASCADE
     )
     image = models.ImageField(
-        'Изображение', upload_to='images/'
+        'Изображение', upload_to='images/',
+        null=True, blank=True
         )
+    image_url = models.CharField(
+        max_length=700,
+        null=True, blank=True
+    )
     priority = models.IntegerField(
         'Приоритет', default=0
         )

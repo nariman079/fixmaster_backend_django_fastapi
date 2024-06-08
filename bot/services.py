@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from src.serializers.organization_serializers import OrganizationDetailSerializer
-from src.models import Customer, Organization, Master, Moderator, Service
+from src.models import Customer, Organization, Master, Moderator, Service, Image
 from src.tasks import (send_message_telegram_on_master,
                        send_message_on_moderator_about_organization,
                        send_message_about_verify_master,
@@ -36,7 +36,6 @@ def check_organization_exist(contact_phone) -> Response:
 
 
 def next_session(start_date, start_time):
-
     start_date_time_str = f"{start_date} {start_time}"
     start_date_time = datetime.strptime(start_date_time_str, "%Y-%d-%m %H:%M:%S")
 
@@ -135,7 +134,9 @@ class BotOrganizationCreate:
             organization_data: dict
     ):
         try:
+
             self.organization = organization_data
+            self.gallery = self.organization.pop('gallery')
         except Exception as error:
             raise ValidationError(
                 {
@@ -147,6 +148,7 @@ class BotOrganizationCreate:
 
     def _create_organization(self):
         try:
+
             self.organization_obj: Organization = Organization.objects.create(**self.organization)
 
         except Exception as error:
@@ -159,6 +161,15 @@ class BotOrganizationCreate:
                 }, code=422
             )
 
+    def _create_gallery(self):
+
+        if self.gallery:
+            for image_url in self.gallery:
+                Image.objects.create(
+                    organization=self.organization_obj,
+                    image_url=image_url
+                )
+
     def _send_notification(self):
         send_message_on_moderator_about_organization.delay(self.organization_obj.pk)
 
@@ -166,6 +177,7 @@ class BotOrganizationCreate:
     def execute(self):
         self._create_organization()
         self._send_notification()
+        self._create_gallery()
         return Response(
             {
                 'message': "Вы успешно авторизовались\nВы будете получать уведомления о брони",
@@ -710,5 +722,3 @@ class MasterNextSessionSrv:
                 'data': []
             }
         )
-
-
