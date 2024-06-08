@@ -69,7 +69,8 @@ def send_message_on_moderator_about_organization(
 Номер телефона: {organization.contact_phone}
 Тип огранизации: {organization.organization_type.title}
 Начало рабочего дня: {organization.time_begin}
-Конец рабочего дня: {organization.time_end}\n"""
+Конец рабочего дня: {organization.time_end}\n
+Ссылка на галерею: https://booking.fix-mst.ru/admin/src/image/?organization__id__exact={organization.pk}"""
 
     moderator_inline_markup = types.InlineKeyboardMarkup()
     verify_true_button = types.InlineKeyboardButton(
