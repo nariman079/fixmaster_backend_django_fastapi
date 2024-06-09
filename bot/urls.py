@@ -8,12 +8,13 @@ from bot.views import (BotMyProfileView,
                        MasterActionView,
                        ServiceActionView,
                        MasterVerifyView,
-                       MasterCustomerView, MasterNextSessionView
+                       MasterCustomerView, 
+                       MasterNextSessionView, 
+                       CustomerNextSessionView,
+                       CustomerVerifyView
                        )
-from bot.webhook_view import webhook_organization
 
 urlpatterns = [
-    path('telegram/webhook/', webhook_organization),
     path('get-my-profile/', BotMyProfileView.as_view(),
          name='get-profile'),
     path('organization/create/', BotOrganizationCreateView.as_view(),
@@ -32,5 +33,8 @@ urlpatterns = [
     path('service/', ServiceActionView.as_view()),
     path('master/verify/', MasterVerifyView.as_view()),
     path('master/<str:telegram_id>/customers/', MasterCustomerView.as_view()),
-    path('master/<str:telegram_id>/last-booking/', MasterNextSessionView.as_view())
+    path('master/<str:telegram_id>/last-booking/', MasterNextSessionView.as_view()),
+    path('customer/verify/', CustomerVerifyView.as_view()),
+    path('customer/<str:telegram_id>/last-booking/', CustomerNextSessionView.as_view()),
+
 ]
