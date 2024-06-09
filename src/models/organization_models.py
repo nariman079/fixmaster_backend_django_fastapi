@@ -200,7 +200,7 @@ class Customer(models.Model):
     )
     code = models.CharField(
         'Код для регистрации',
-        max_length=30,
+        max_length=255,
         null=True, blank=True
     )
     master = models.ForeignKey(
