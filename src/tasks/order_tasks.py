@@ -1,6 +1,7 @@
 from celery import shared_task
 
 from src.models import Order
+
 @shared_task
 def change_status_order(
         order_id: int,

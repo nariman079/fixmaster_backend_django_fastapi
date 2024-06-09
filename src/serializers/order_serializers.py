@@ -22,7 +22,6 @@ class OrderSerializer(serializers.Serializer):
         max_length=120, allow_null=True, required=False, allow_blank=True
     )
 
-
 class BookingSerializer(serializers.Serializer):
     date = serializers.DateField()
     master_id = serializers.IntegerField()

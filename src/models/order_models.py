@@ -11,17 +11,22 @@ class Booking(models.Model):
 
     booking_date = models.DateField(
         'Дата бронирования', 
-        )
+    )
     booking_time = models.TimeField(
         'Время бронирования', 
-        )
+    )
     booking_end_time = models.TimeField(
         "Длительность процедуры",
-
     )
     master = models.ForeignKey(
-        'src.Master', on_delete=models.CASCADE, 
-        )
+        'src.Master',
+        on_delete=models.CASCADE,
+    )
+    customer = models.ForeignKey(
+        'src.Customer',
+        on_delete=models.CASCADE,
+        null=True, blank=True
+    )
 
     def __str__(self):
         return str(self.master)

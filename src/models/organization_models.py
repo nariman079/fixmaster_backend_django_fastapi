@@ -73,7 +73,6 @@ class Organization(models.Model):
         return self.title
 
 
-
 class Master(models.Model):
     """
     Модель "Мастер"
@@ -117,7 +116,6 @@ class Master(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Организация'
     )
-
     is_verified = models.BooleanField(
         "Верифицирован",
         default=False
@@ -205,6 +203,10 @@ class Customer(models.Model):
         on_delete=models.SET_NULL,
         null=True, blank=True
     )
+    is_verified = models.BooleanField(
+        "Верифицированный клиент",
+        default=False
+    )
 
     def __str__(self):
         return self.username
@@ -216,11 +218,8 @@ class Customer(models.Model):
             self.code = uuid.uuid4().__str__()
         super().save(*args, **kwargs)
 
-    
-
 
 class Moderator(models.Model):
-
     class Meta:
         verbose_name = 'Модераторы'
 
@@ -244,7 +243,7 @@ class Moderator(models.Model):
         if self.pk:
             pass
         else:
-            
+
             self.code = random.randint(10000, 99999)
         return super().save(*args, **kwargs)
 

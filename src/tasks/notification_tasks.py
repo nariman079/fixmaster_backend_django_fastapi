@@ -56,7 +56,7 @@ def send_message_about_verify_master(
 
 
 @shared_task
-def send_message_about_verify_master(
+def send_message_about_verify_customer(
         master_id: int,
         customer_id: int
 ):

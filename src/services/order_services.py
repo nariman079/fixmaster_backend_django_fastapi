@@ -121,9 +121,11 @@ class OrderCreateSrv:
         """ Создание клиента в БД"""
         self.customer = Customer.objects.create(
             phone=self.customer_phone,
-            user_keyword=self.customer_name,
+            name=self.customer_name,
             master_id=self.master_id
         )
+        self.booking.customer = self.customer
+        self.booking.save()
 
     def _send_notification_on_master(self):
         """ Отправка сообщания мастеру о брони """
@@ -167,7 +169,8 @@ class OrderCreateSrv:
         return Response({
             'message': "Заказ успешно создан",
             'success': True,
-            'data': self.serializer_data
+            'data': self.serializer_data,
+            'code': self.customer.code
         }, status=201)
 
 

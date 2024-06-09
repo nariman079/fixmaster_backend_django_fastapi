@@ -8,10 +8,10 @@ from rest_framework.response import Response
 
 from src.serializers.organization_serializers import OrganizationDetailSerializer
 from src.models import Customer, Organization, Master, Moderator, Service, Image
-from src.tasks import (send_message_telegram_on_master,
-                       send_message_on_moderator_about_organization,
+from src.tasks import (send_message_on_moderator_about_organization,
                        send_message_about_verify_master,
-                       send_is_verified_organization)
+                       send_is_verified_organization,
+                       send_message_about_verify_customer)
 
 
 def check_organization_exist(contact_phone) -> Response:
@@ -811,7 +811,7 @@ class CustomerVerifySrv:
 
     def send_notification(self):
         if self.customer:
-            send_message_about_verify_master.delay(self.customer.id)
+            send_message_about_verify_customer.delay(self.customer.master.telegram_id, self.telegram_id)
 
     def execute(self):
         self.get_customer_by_code()
