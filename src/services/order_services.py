@@ -163,6 +163,7 @@ class OrderCreateSrv:
 
         self._create_order()
         self._create_booking()
+        self._create_customer()
         self._send_notification_on_master()
         self._send_order_status_check()
 
