@@ -722,3 +722,105 @@ class MasterNextSessionSrv:
                 'data': []
             }
         )
+
+
+class CustomerNextSessionSrv:
+    def __init__(
+            self,
+            serializer_data: dict
+    ):
+        self.telegram_id = serializer_data.get('telegram_id')
+
+    def get_client(self):
+        self.customer = Customer.objects.filter(telegram_id=self.telegram_id).first()
+
+        if not self.customer:
+            raise ValidationError(
+                {
+                    'message': "Такого клиента нет в системе",
+                    'success': False,
+                    'data': []
+                }
+            )
+
+    def get_customer_bookings(self):
+        self.booking = (
+            self.customer.master.booking_set.filter(
+                booking_date__gte=datetime.now().date(),
+                booking_time__gte=datetime.now().time())
+            .order_by('booking_date')
+            .order_by('booking_time')
+        ).annotate(
+            start_time=F('booking_time'),
+            start_date=F('booking_date')
+        ).values('start_time', 'start_date').first()
+
+    def complete_time(self):
+        self.next_time = next_session(**self.booking)
+
+    def execute(self):
+        self.get_client()
+        self.get_customer_bookings()
+        if not self.booking:
+            return Response(
+                {
+                    'message': 'У вас нет броней',
+                    'success': True,
+                    'data': []
+                }
+            )
+
+        self.complete_time()
+
+        return Response(
+            {
+                'message': self.next_time,
+                'success': True,
+                'data': []
+            }
+        )
+
+
+class CustomerVerifySrv:
+    def __init__(self, serializer_data: dict):
+        self.code = serializer_data.get("code")
+        self.telegram_id = serializer_data.get("telegram_id")
+
+    def get_customer_by_code(self):
+        self.customer = Customer.objects.filter(
+            code=self.code
+        ).first()
+
+    def verify_customer(self):
+        if self.customer:
+            if self.customer.is_verified:
+                raise ValidationError({
+                    'message': 'Такой пользователь уже есть в системе',
+                    'data': [],
+                    'success': True
+                })
+            self.customer.telegram_id = self.telegram_id
+            self.customer.is_verified = True
+            self.customer.save()
+        else:
+            raise ValidationError({
+                'message': 'Такого пользователя нет в системе\nПопробуйте еще раз',
+                'data': [],
+                'success': True
+            })
+
+    def send_notification(self):
+        if self.customer:
+            send_message_about_verify_master.delay(self.customer.id)
+
+    def execute(self):
+        self.get_customer_by_code()
+        self.customer()
+        self.send_notification()
+        return Response(
+            {
+                'message': 'Вы авторизованы',
+                'success': True,
+                'data': []
+            }, status=200
+        )

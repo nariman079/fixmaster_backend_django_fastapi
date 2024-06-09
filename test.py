@@ -1,96 +1,46 @@
-# import datetime
-# from typing import List
-# import dataclasses
-# from pprint import pprint
+import uuid
+from os import listdir
+from os.path import isfile, join
+from telebot import TeleBot
+from telebot.types import Message
 import os
 
-# def create_datas():
-#    from datetime import datetime, time, date
-#    from typing import OrderedDict
-#    from django.core.files.uploadedfile import SimpleUploadedFile
-#    from rest_framework.test import APITestCase
+TOKEN = '7155005136:AAHJJL0XXzT0ovudTRFdAg8ucUZxk-5eBws'
 
-#    from src.models import Master, Service, Organization, OrganizationType
-#    def generate_image():
-#     return SimpleUploadedFile(
-#             name='image.png',
-#             content=open('image.png', 'rb').read(),
-#             content_type='image/png'
-#         )
-
-#    organization_type = OrganizationType.objects.create(
-#       title="orgnization_type"
-#    )
-#    organization = Organization.objects.create(
-#       title='title',
-#       main_image=generate_image(),
-#       is_verified=True,
-#       address="address",
-#       contact_phone="9999",
-#       time_begin=datetime.now().time(), 
-#       time_end=datetime.now().time(),
-#       work_schedule="5/2",
-#       organization_type_id=organization_type.id,
-#    )
-#    master = Master.objects.create(
-#       name="test",
-#       surname="test",
-#       image=generate_image(),
-#       organization=organization
-#    )
-#    service = Service.objects.create(
-#       master=master,
-#       title="title",
-#       price=10,
-#       min_time=30
-#    )
+bot = TeleBot(TOKEN)
 
 
-# def time_settings():
+@bot.message_handler(content_types=['photo'])
+def photo(message: Message) -> None:
+    file_id = message.photo[-1].file_id
+    file_info = bot.get_file(file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    path = f'photos/{message.from_user.username}/'
+    if not os.path.isdir(path):
+        os.mkdir(path)
+
+    file_path = os.path.join(path, f"{str(uuid.uuid4())}.jpg")
+    # with open(file_path, 'wb') as file:
+    #     file.write(downloaded_file)
 
 
-#    @dataclasses.dataclass
-#    class Booking:
-#       end_time: str
-#       start_time: str
+    onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
+    print(onlyfiles)
+    # s3.upload_file(
+    #     Filename=file_info.file_path,
+    #     Bucket=bucket_name,
+    #     Key=file_info.file_path
+    # )
+    #
+    # photo_file.download(file_path)
+
+    print(len(message.photo))
+    print(message.media_group_id)
 
 
-#    def get_master_available_time(bookigns: list[Booking]):
-#       available_times = set()
-#       for booking in bookigns:
-#          start = int(booking.start_time.split(':')[0])
-#          end = int(booking.end_time.split(':')[0])
-#          for i in range(start, end+1):
-#             available_times.add(f'{i}:00')
-#       return sorted(available_times)
-
-#    available_times = get_master_available_time(
-#       [
-#          Booking(start_time='12:20', end_time='15:10')
-#       ]
-#    )
-#    times = [f'{i}:00' for i in range(4,20)]
 
 
-#    def is_free_time(time:str):
-#       hour = time.split(':')[0]
-#       all_times = map(lambda x: x.split(':')[0], available_times)
 
-#       return   {
-#          'time':time,
-#          'is_free': hour not in all_times
-#       }
-
-#    free_times = [is_free_time(i) for i in times]
-
-# def get_status(now_time: datetime.time ,
-#                organization_close_time: datetime.time) -> dict:
-#    return now_time > organization_close_time
-
-# run_task_time = (datetime.datetime.combine(
-#             datetime.datetime(day=24, year=2024, month=5).date(), datetime.datetime(day=24, year=2024, month=6, hour=0, minute=30).time()
-#         ) + datetime.timedelta(minutes=30) - datetime.datetime.now()).total_seconds()
-
-# print(run_task_time)
-
-
+if __name__ == '__main__':
+    bot.polling(none_stop=True)

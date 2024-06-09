@@ -2,7 +2,7 @@ from celery import shared_task
 from telebot import types
 
 from bot.config import master_bot, moderator_bot, organization_bot
-from src.models import Master, Organization, Moderator
+from src.models import Master, Organization, Moderator, Customer
 
 
 def callback_verify_true_organization(organization_id: int) -> str:
@@ -13,7 +13,7 @@ def callback_verify_false_organization(organization_id: int) -> str:
     return f"organization_verify_false_{organization_id}"
 
 
-def get_moderator_for_send_message():
+def get_moderator_for_send_message() -> Moderator:
     return Moderator.objects.first()
 
 
@@ -51,6 +51,22 @@ def send_message_about_verify_master(
     text = f"✅ Мастер {master.name} {master.surname} зарегистрировался в системе \n"
     organization_bot.send_message(
         chat_id=master.organization.telegram_id,
+        text=text
+    )
+
+
+@shared_task
+def send_message_about_verify_master(
+        master_id: int,
+        customer_id: int
+):
+    """
+    Отправка сообщения Мастеру о бронировании
+    """
+    customer = Customer.objects.get(id=customer_id)
+    text = f"✅ Клиент {customer.username} {customer.name} зарегистрировался в системе \n"
+    organization_bot.send_message(
+        chat_id=master_id,
         text=text
     )
 

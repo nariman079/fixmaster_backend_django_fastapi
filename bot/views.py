@@ -19,7 +19,10 @@ from bot.services import (GetProfile,
                           MasterServiceListSrv,
                           MasterServiceEditSrv,
                           MasterVerifySrv,
-                          MasterCustomers, MasterNextSessionSrv
+                          MasterCustomers, 
+                          MasterNextSessionSrv, 
+                          CustomerNextSessionSrv,
+                          CustomerVerifySrv
                           )
 from bot.serializers import (BotOrganizationCreateSerializer,
                              BotModeratorGetProfileSerializer,
@@ -211,6 +214,7 @@ class BotGetOrganizationByTelegramIdView(APIView):
             }, status=422
         )
 
+
 class BotGetOrganizationDataByTelegramIdView(APIView):
     def get(self, *args, **kwargs):
         if api_key_permission(request=self.request):
@@ -231,6 +235,7 @@ class BotGetOrganizationDataByTelegramIdView(APIView):
                 ]
             }, status=422
         )
+
 
 class MasterActionView(APIView):
     def post(self, request, *args, **kwargs):
@@ -254,7 +259,7 @@ class MasterActionView(APIView):
             }, status=422
         )
 
-    def patch(self, request, *args , **kwargs):
+    def patch(self, request, *args, **kwargs):
         if api_key_permission(request=self.request):
             serializer = MasterEditSerializer(
                 data=self.request.data
@@ -294,6 +299,7 @@ class MasterActionView(APIView):
             }, status=422
         )
 
+
 class ServiceActionView(APIView):
     def get(self, request, *args, **kwargs):
         if api_key_permission(self.request):
@@ -301,7 +307,7 @@ class ServiceActionView(APIView):
             master_id = kwargs.get('master_id')
             if service_id:
                 master_service_detail = MasterServiceDetailSrv(
-                service_id=service_id
+                    service_id=service_id
                 )
                 return master_service_detail.execute()
             else:
@@ -311,17 +317,16 @@ class ServiceActionView(APIView):
                 return master_service_list.execute()
         return Response({
             'message': "Api-Key error",
-            'success':False,
-            'data':[]
+            'success': False,
+            'data': []
         })
-
 
     def post(self, request, *args, **kwargs):
         if api_key_permission(self.request):
             master_id = kwargs.get('master_id', None)
             serializer = MasterServiceCreateSerializer(
-                    data=self.request.data
-                )
+                data=self.request.data
+            )
             serializer.is_valid(raise_exception=True)
             master_service_create = MasterServiceCreateSrv(
                 master_id=master_id,
@@ -330,11 +335,10 @@ class ServiceActionView(APIView):
             return master_service_create.execute()
         return Response({
             'message': "Api-Key error",
-            'success':False,
-            'data':[]
+            'success': False,
+            'data': []
         })
 
-    
     def patch(self, request, *args, **kwargs):
         if api_key_permission(self.request):
             service_id = self.request.query_params.get('service_id', None)
@@ -345,10 +349,10 @@ class ServiceActionView(APIView):
             return master_service_edit.execute()
         return Response({
             'message': "Api-Key error",
-            'success':False,
-            'data':[]
+            'success': False,
+            'data': []
         })
-    
+
     def delete(self, request, *args, **kwargs):
         if api_key_permission(self.request):
             service_id = self.request.query_params.get('service_id', None)
@@ -359,20 +363,20 @@ class ServiceActionView(APIView):
             return master_service_delete.execute()
         return Response({
             'message': "Api-Key error",
-            'success':False,
-            'data':[]
+            'success': False,
+            'data': []
         })
 
 
 class MasterVerifyView(APIView):
 
     @extend_schema(
-    description = 'Verfy master',
-    methods = ["POST", ],
-    request = [
-        OpenApiRequest(
+        description='Verfy master',
+        methods=["POST", ],
+        request=[
+            OpenApiRequest(
 
-        )])
+            )])
     def post(self, request, *args, **kwargs):
         serializer = MasterVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -387,13 +391,14 @@ class MasterVerifyView(APIView):
             'data': []
         }, 401)
 
+
 class MasterCustomerView(APIView):
     def get(self, request, *args, **kwargs):
         telegram_id = self.kwargs.get('telegram_id')
 
         if api_key_permission(self.request):
             master_customers = MasterCustomers(
-               serializer_data={
+                serializer_data={
                     'telegram_id': telegram_id
                 }
             )
@@ -410,15 +415,42 @@ class MasterNextSessionView(APIView):
         telegram_id = self.kwargs.get('telegram_id')
 
         if api_key_permission(self.request):
-            master_customers = MasterNextSessionSrv(
+            master_next_session = MasterNextSessionSrv(
                 serializer_data={
                     'telegram_id': telegram_id
                 }
             )
-            return master_customers.execute()
+            return master_next_session.execute()
         return Response({
             'message': "Api-Key error",
             'success': False,
             'data': []
         }, 401)
 
+
+class CustomerNextSessionView(APIView):
+    def get(self, request, *args, **kwargs):
+        if api_key_permission(self.request):
+            customer_next_session = CustomerNextSessionSrv(
+                serializer_data=self.request.data
+            )
+            return customer_next_session.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success': False,
+            'data': []
+        }, 401)
+
+
+class CustomerVerifyView(APIView):
+    def get(self, request, *args, **kwargs):
+        if api_key_permission(self.request):
+            customer_next_session = CustomerVerifySrv(
+                serializer_data=self.request.data
+            )
+            return customer_next_session.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success': False,
+            'data': []
+        }, 401)

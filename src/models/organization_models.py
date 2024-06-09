@@ -209,6 +209,13 @@ class Customer(models.Model):
     def __str__(self):
         return self.username
 
+    def save(self, *args, **kwargs):
+        if self.pk:
+            pass
+        else:
+            self.code = uuid.uuid4().__str__()
+        super().save(*args, **kwargs)
+
     
 
 
