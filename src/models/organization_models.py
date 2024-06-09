@@ -190,7 +190,7 @@ class Customer(models.Model):
     )
     name = models.CharField(
         "Имя пользователя",
-        max_length=30,
+        max_length=250,
         null=True, blank=True
     )
     additional_info = models.CharField(
