@@ -185,8 +185,6 @@ class FreeBookingSrv:
         self.master_id = serializer_validated_data.get('master_id')
 
 
-
-
     def _get_master_bookings(self) -> None:
         """
         Get all booking on current date

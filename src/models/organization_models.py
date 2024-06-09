@@ -184,7 +184,12 @@ class Customer(models.Model):
         unique=True
     )
     username = models.CharField(
-        'Имя пользователя',
+        'Имя пользователя telegram',
+        max_length=30,
+        null=True, blank=True
+    )
+    name = models.CharField(
+        "Имя пользователя",
         max_length=30,
         null=True, blank=True
     )
