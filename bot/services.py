@@ -37,7 +37,7 @@ def check_organization_exist(contact_phone) -> Response:
 
 def next_session(start_date, start_time):
     start_date_time_str = f"{start_date} {start_time}"
-    start_date_time = datetime.strptime(start_date_time_str, "%Y-%d-%m %H:%M:%S")
+    start_date_time = datetime.strptime(start_date_time_str, "%Y-%m-%d %H:%M:%S")
 
     current_date_time = datetime.now()
 
