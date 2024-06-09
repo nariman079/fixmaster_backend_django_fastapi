@@ -815,7 +815,7 @@ class CustomerVerifySrv:
 
     def execute(self):
         self.get_customer_by_code()
-        self.customer()
+        self.verify_customer()
         self.send_notification()
         return Response(
             {

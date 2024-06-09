@@ -195,8 +195,8 @@ class Customer(models.Model):
         max_length=255,
         null=True, blank=True
     )
-    user_keyword = models.CharField(
-        'Слово пароль',
+    code = models.CharField(
+        'Код для регистрации',
         max_length=30,
         null=True, blank=True
     )
