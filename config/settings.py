@@ -121,7 +121,7 @@ REST_FRAMEWORK = {
     'rest_framework.authentication.BasicAuthentication',
 ]
 }
-DATE_INPUT_FORMATS = ['%d-%m-%Y']
+DATE_INPUT_FORMATS = ['%m-%d-%Y']
 SPECTACULAR_SETTINGS = {
     'TITLE': 'FixMaster API',
     'DESCRIPTION': 'Compact booking of master',
