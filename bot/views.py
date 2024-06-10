@@ -458,13 +458,8 @@ class CustomerVerifyView(APIView):
 
 class CheckCustomerView(APIView):
     def post(self, request, *args, **kwargs):
-        if api_key_permission(self.request):
-            customer_next_session = CheckCustomerSrv(
-                serializer_data=self.request.query_params
-            )
-            return customer_next_session.execute()
-        return Response({
-            'message': "Api-Key error",
-            'success': False,
-            'data': []
-        }, 401)
+        customer_next_session = CheckCustomerSrv(
+            serializer_data=self.request.query_params
+        )
+        return customer_next_session.execute()
+     
