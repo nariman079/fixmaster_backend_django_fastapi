@@ -830,7 +830,6 @@ class CheckCustomerSrv:
     def __init__(self, serializer_data: dict):
         self.telegram_id = serializer_data.get("telegram_id")
 
-
     def get_customer_by_code(self):
         self.customer = Customer.objects.filter(
             telegram_id=self.telegram_id

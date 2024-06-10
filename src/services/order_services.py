@@ -188,7 +188,6 @@ class FreeBookingSrv:
         self.date = serializer_validated_data.get('date')
         self.master_id = serializer_validated_data.get('master_id')
 
-
     def _get_master_bookings(self) -> None:
         """
         Get all booking on current date
@@ -210,10 +209,19 @@ class FreeBookingSrv:
         """
         self.available_times = set()
         for booking in self.bookings:
-            start = time_to_int(datetime.now().time())
+            start = time_to_int(booking.booking_time)
             end = time_to_int(booking.booking_end_time)
-            for i in range(start, end + 1):
-                self.available_times.add(f'{i}:00')
+
+            if booking.booking_date == datetime.now().date() and time_to_int(datetime.now().time()) > start:
+                for i in range(
+                        time_to_int(booking.master.organization.time_begin),
+                        time_to_int(datetime.now().time()) + 1):
+                    self.available_times.add(f'{i}:00')
+            else:
+                for i in range(start, end + 1):
+                    self.available_times.add(f'{i}:00')
+
+
 
     def _generate_all_times(self):
         """
@@ -221,14 +229,13 @@ class FreeBookingSrv:
         """
         self.free_times = [is_free_time(i, sorted(self.available_times)) for i in self.times]
 
-    @transaction.atomic
     def execute(self):
         """
         Run commands
         """
         if is_retroactive_date(self.date):
             self._generate_organization_times()
-            self.free_times = [{'time': i, 'is_free': False } for i in self.times]
+            self.free_times = [{'time': i, 'is_free': False} for i in self.times]
             return Response({
                 'message': "All times has been received",
                 'success': True,
