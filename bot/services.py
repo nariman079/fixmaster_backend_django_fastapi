@@ -824,3 +824,27 @@ class CustomerVerifySrv:
                 'data': []
             }, status=200
         )
+
+
+class CheckCustomerSrv:
+    def __init__(self, serializer_data: dict):
+        self.telegram_id = serializer_data.get("telegram_id")
+
+
+    def get_customer_by_code(self):
+        self.customer = Customer.objects.filter(
+            telegram_id=self.telegram_id
+        ).first()
+
+    def execute(self):
+        self.get_customer_by_code()
+
+        if self.customer:
+            return Response(
+                 status=200
+            )
+
+        else:
+            return Response(
+                status=404
+            )

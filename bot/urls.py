@@ -8,11 +8,11 @@ from bot.views import (BotMyProfileView,
                        MasterActionView,
                        ServiceActionView,
                        MasterVerifyView,
-                       MasterCustomerView, 
-                       MasterNextSessionView, 
+                       MasterCustomerView,
+                       MasterNextSessionView,
                        CustomerNextSessionView,
-                       CustomerVerifyView
-                       )
+                       CustomerVerifyView,
+                       CheckCustomerView)
 
 urlpatterns = [
     path('get-my-profile/', BotMyProfileView.as_view(),
@@ -36,5 +36,5 @@ urlpatterns = [
     path('master/<str:telegram_id>/last-booking/', MasterNextSessionView.as_view()),
     path('customer/verify/', CustomerVerifyView.as_view()),
     path('customer/<str:telegram_id>/last-booking/', CustomerNextSessionView.as_view()),
-
+    path('customer/check/', CheckCustomerView.as_view())
 ]

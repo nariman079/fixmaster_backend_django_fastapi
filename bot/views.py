@@ -19,10 +19,10 @@ from bot.services import (GetProfile,
                           MasterServiceListSrv,
                           MasterServiceEditSrv,
                           MasterVerifySrv,
-                          MasterCustomers, 
-                          MasterNextSessionSrv, 
+                          MasterCustomers,
+                          MasterNextSessionSrv,
                           CustomerNextSessionSrv,
-                          CustomerVerifySrv
+                          CustomerVerifySrv, CheckCustomerSrv
                           )
 from bot.serializers import (BotOrganizationCreateSerializer,
                              BotModeratorGetProfileSerializer,
@@ -447,6 +447,20 @@ class CustomerVerifyView(APIView):
         if api_key_permission(self.request):
             customer_next_session = CustomerVerifySrv(
                 serializer_data=self.request.data
+            )
+            return customer_next_session.execute()
+        return Response({
+            'message': "Api-Key error",
+            'success': False,
+            'data': []
+        }, 401)
+
+
+class CheckCustomerView(APIView):
+    def get(self, request, *args, **kwargs):
+        if api_key_permission(self.request):
+            customer_next_session = CheckCustomerSrv(
+                serializer_data=self.request.query_params
             )
             return customer_next_session.execute()
         return Response({
