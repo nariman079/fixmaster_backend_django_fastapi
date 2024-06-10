@@ -843,9 +843,7 @@ class CheckCustomerSrv:
             return Response(
                 {
                     'data': self.customer
-                },
-                 status=200,
-
+                }, status=200,
             )
 
         else:
