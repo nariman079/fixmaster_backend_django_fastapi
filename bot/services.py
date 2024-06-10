@@ -834,14 +834,18 @@ class CheckCustomerSrv:
     def get_customer_by_code(self):
         self.customer = Customer.objects.filter(
             telegram_id=self.telegram_id
-        ).first()
+        ).values('telegram_id', 'name', 'phone').first()
 
     def execute(self):
         self.get_customer_by_code()
 
         if self.customer:
             return Response(
-                 status=200
+                {
+                    'data': self.customer
+                },
+                 status=200,
+
             )
 
         else:
