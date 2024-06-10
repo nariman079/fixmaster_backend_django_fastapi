@@ -457,7 +457,7 @@ class CustomerVerifyView(APIView):
 
 
 class CheckCustomerView(APIView):
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         if api_key_permission(self.request):
             customer_next_session = CheckCustomerSrv(
                 serializer_data=self.request.query_params
