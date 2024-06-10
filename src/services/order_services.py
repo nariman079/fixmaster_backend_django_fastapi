@@ -119,11 +119,15 @@ class OrderCreateSrv:
 
     def _create_customer(self):
         """ Создание клиента в БД"""
-        self.customer = Customer.objects.create(
-            phone=self.customer_phone,
-            name=self.customer_name,
-            master_id=self.master_id
-        )
+        self.customer = Customer.objects.filter(phone=self.customer_phone).first()
+
+        if not self.customer:
+            self.customer = Customer.objects.create(
+                phone=self.customer_phone,
+                name=self.customer_name,
+                master_id=self.master_id
+            )
+
         self.booking.customer = self.customer
         self.booking.save()
 
