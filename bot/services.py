@@ -785,6 +785,7 @@ class CustomerVerifySrv:
     def __init__(self, serializer_data: dict):
         self.code = serializer_data.get("code")
         self.telegram_id = serializer_data.get("telegram_id")
+        self.username = serializer_data.get("username")
 
     def get_customer_by_code(self):
         self.customer = Customer.objects.filter(
@@ -801,6 +802,7 @@ class CustomerVerifySrv:
                 })
             self.customer.telegram_id = self.telegram_id
             self.customer.is_verified = True
+            self.customer.username = self.username
             self.customer.save()
         else:
             raise ValidationError({

@@ -127,7 +127,9 @@ class OrderCreateSrv:
                 name=self.customer_name,
                 master_id=self.master_id
             )
-
+        else:
+            self.customer.name = self.customer_name
+            self.customer.save()
         self.booking.customer = self.customer
         self.booking.save()
 

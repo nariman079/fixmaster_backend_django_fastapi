@@ -65,7 +65,7 @@ def send_message_about_verify_customer(
     """
     customer = Customer.objects.get(id=customer_id)
     text = f"✅ Клиент {customer.username} {customer.name} зарегистрировался в системе \n"
-    organization_bot.send_message(
+    master_bot.send_message(
         chat_id=master_id,
         text=text
     )
