@@ -200,9 +200,9 @@ class FreeBookingSrv:
         )
 
     def _generate_organization_times(self):
-        organization = Organization.objects.filter(master=self.master_id).first()
-        start_time = time_to_int(organization.time_begin)
-        end_time = time_to_int(organization.time_end)
+        self.organization = Organization.objects.filter(master=self.master_id).first()
+        start_time = time_to_int(self.organization.time_begin)
+        end_time = time_to_int(self.organization.time_end)
         self.times = [f'{i}:00' for i in range(start_time, end_time)]
 
     def _get_master_available_time(self):
@@ -210,6 +210,11 @@ class FreeBookingSrv:
         Get master available time
         """
         self.available_times = set()
+        if not self.bookings:
+            for i in range(
+                    time_to_int(self.organization.time_begin),
+                    time_to_int(datetime.now().time()) + 1):
+                self.available_times.add(f'{i}:00')
         for booking in self.bookings:
             start = time_to_int(booking.booking_time)
             end = time_to_int(booking.booking_end_time)
@@ -222,8 +227,6 @@ class FreeBookingSrv:
             else:
                 for i in range(start, end + 1):
                     self.available_times.add(f'{i}:00')
-
-
 
     def _generate_all_times(self):
         """
