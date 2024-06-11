@@ -63,7 +63,7 @@ def send_message_about_verify_customer(
     """
     Отправка сообщения Мастеру о бронировании
     """
-    customer = Customer.objects.get(id=customer_id)
+    customer = Customer.objects.get(telegram_id=customer_id)
     text = f"✅ Клиент {customer.username} {customer.name} зарегистрировался в системе \n"
     master_bot.send_message(
         chat_id=master_id,
