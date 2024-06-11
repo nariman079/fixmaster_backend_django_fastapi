@@ -432,7 +432,7 @@ class CustomerNextSessionView(APIView):
     def get(self, request, *args, **kwargs):
         if api_key_permission(self.request):
             customer_next_session = CustomerNextSessionSrv(
-                serializer_data=self.request.data
+                serializer_data=self.kwargs
             )
             return customer_next_session.execute()
         return Response({

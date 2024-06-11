@@ -733,7 +733,7 @@ class CustomerNextSessionSrv:
 
     def get_client(self):
         self.customer = Customer.objects.filter(telegram_id=self.telegram_id).first()
-
+        print(self.customer)
         if not self.customer:
             raise ValidationError(
                 {
