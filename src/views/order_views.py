@@ -1,4 +1,3 @@
-from typing import OrderedDict
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.request import Request
@@ -11,7 +10,7 @@ class OrderCreateView(APIView):
     serializer_class = OrderSerializer
 
     def post(self, request, *args, **kwargs) -> Response:
-        """ POST handler for creating order and booking """
+        """POST handler for creating order and booking"""
         self.request: Request
         serializer = OrderSerializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
@@ -20,22 +19,25 @@ class OrderCreateView(APIView):
             print(serializer)
             order_create_srv = OrderCreateSrv(
                 serializer_validate_data=serializer.validated_data,
-                serialzier_data=serializer.data
+                serialzier_data=serializer.data,
             )
             return order_create_srv.execute()
 
-        return Response({
-            'message': 'Bad error',
-            'success': False,
-            'data': [],
-        }, status=422)
+        return Response(
+            {
+                "message": "Bad error",
+                "success": False,
+                "data": [],
+            },
+            status=422,
+        )
 
 
 class FreeBookingView(APIView):
     serializer_class = BookingSerializer
 
     def post(self, request, *args, **kwargs) -> Response:
-        """ POST handler for creating order and booking """
+        """POST handler for creating order and booking"""
         self.request: Request
         serializer = BookingSerializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
@@ -46,8 +48,11 @@ class FreeBookingView(APIView):
             )
             return free_booking_src.execute()
 
-        return Response({
-            'message': 'Bad error',
-            'success': False,
-            'data': [],
-        }, status=422)
+        return Response(
+            {
+                "message": "Bad error",
+                "success": False,
+                "data": [],
+            },
+            status=422,
+        )

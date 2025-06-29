@@ -5,15 +5,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0020_customer_is_verified'),
+        ("src", "0020_customer_is_verified"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='booking',
-            name='customer',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='src.customer'),
+            model_name="booking",
+            name="customer",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="src.customer",
+            ),
         ),
     ]

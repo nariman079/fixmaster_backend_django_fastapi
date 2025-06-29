@@ -4,27 +4,60 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0012_organization_main_image_url'),
+        ("src", "0012_organization_main_image_url"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Moderator',
+            name="Moderator",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('telegram_id', models.CharField(default='default-user', max_length=30, verbose_name='ID Телеграм')),
-                ('login', models.CharField(blank=True, max_length=30, null=True, unique=True, verbose_name='Логин')),
-                ('code', models.CharField(blank=True, max_length=30, null=True, verbose_name='Код')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "telegram_id",
+                    models.CharField(
+                        default="default-user",
+                        max_length=30,
+                        verbose_name="ID Телеграм",
+                    ),
+                ),
+                (
+                    "login",
+                    models.CharField(
+                        blank=True,
+                        max_length=30,
+                        null=True,
+                        unique=True,
+                        verbose_name="Логин",
+                    ),
+                ),
+                (
+                    "code",
+                    models.CharField(
+                        blank=True, max_length=30, null=True, verbose_name="Код"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Модераторы',
+                "verbose_name": "Модераторы",
             },
         ),
         migrations.AlterField(
-            model_name='organization',
-            name='main_image',
-            field=models.ImageField(blank=True, null=True, upload_to='business', verbose_name='Заглавное изображение'),
+            model_name="organization",
+            name="main_image",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to="business",
+                verbose_name="Заглавное изображение",
+            ),
         ),
     ]

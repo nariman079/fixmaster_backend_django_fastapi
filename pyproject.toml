@@ -20,6 +20,7 @@ drf-yasg = "^1.21.7"
 pillow = "^10.3.0"
 uvicorn = "^0.29.0"
 drf-spectacular-sidecar = "^2024.5.1"
+ruff = "^0.12.1"
 
 
 [build-system]

@@ -4,19 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0018_image_image_url_alter_image_image'),
+        ("src", "0018_image_image_url_alter_image_image"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='customer',
-            name='user_keyword',
+            model_name="customer",
+            name="user_keyword",
         ),
         migrations.AddField(
-            model_name='customer',
-            name='code',
-            field=models.CharField(blank=True, max_length=30, null=True, verbose_name='Код для регистрации'),
+            model_name="customer",
+            name="code",
+            field=models.CharField(
+                blank=True, max_length=30, null=True, verbose_name="Код для регистрации"
+            ),
         ),
     ]

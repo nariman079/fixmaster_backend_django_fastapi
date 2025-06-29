@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0010_alter_master_code'),
+        ("src", "0010_alter_master_code"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='master',
-            name='code',
-            field=models.IntegerField(blank=True, null=True, verbose_name='Слово пароль'),
+            model_name="master",
+            name="code",
+            field=models.IntegerField(
+                blank=True, null=True, verbose_name="Слово пароль"
+            ),
         ),
     ]

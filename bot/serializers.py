@@ -13,6 +13,7 @@ class BotOrganizationCreateSerializer(serializers.Serializer):
     organization_type_id = serializers.IntegerField()
     gallery = serializers.ListField(child=serializers.CharField())
 
+
 class BotModeratorGetProfileSerializer(serializers.Serializer):
     telegram_id = serializers.CharField()
     login = serializers.CharField()

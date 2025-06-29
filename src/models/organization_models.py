@@ -2,20 +2,17 @@ import random
 import uuid
 
 from django.db import models
-from config.settings import cache
 from src.enums import statuses
 
 
 class OrganizationType(models.Model):
-    """ Типы орзанизаций """
+    """Типы орзанизаций"""
 
     class Meta:
         verbose_name = "Тип организации"
         verbose_name_plural = "Типы организаций"
 
-    title = models.CharField(
-        verbose_name="Типы оргинизаций", max_length=255
-    )
+    title = models.CharField(verbose_name="Типы оргинизаций", max_length=255)
 
     def __str__(self):
         return self.title
@@ -27,47 +24,37 @@ class Organization(models.Model):
     """
 
     class Meta:
-        verbose_name = 'Салон'
-        verbose_name_plural = 'Салоны'
+        verbose_name = "Салон"
+        verbose_name_plural = "Салоны"
 
-    telegram_id = models.CharField(
-        'ID Телеграм', max_length=30,
-        editable=False
-    )
+    telegram_id = models.CharField("ID Телеграм", max_length=30, editable=False)
     title = models.CharField(
-        'Название', max_length=30,
+        "Название",
+        max_length=30,
     )
     main_image = models.ImageField(
-        'Заглавное изображение', upload_to='business',
-        null=True, blank=True
+        "Заглавное изображение", upload_to="business", null=True, blank=True
     )
-    main_image_url = models.CharField(
-        max_length=400,
-        null=True,
-        blank=True
-    )
+    main_image_url = models.CharField(max_length=400, null=True, blank=True)
     address = models.CharField(
-        'Адрес', max_length=30,
+        "Адрес",
+        max_length=30,
     )
     contact_phone = models.CharField(
-        'Номер телефона', max_length=30,
+        "Номер телефона",
+        max_length=30,
     )
     time_begin = models.TimeField(
-        'Начало рабочего дня',
+        "Начало рабочего дня",
     )
     time_end = models.TimeField(
-        'Конец рабочего дня',
+        "Конец рабочего дня",
     )
-    work_schedule = models.CharField(
-        'График работы', max_length=30
-    )
+    work_schedule = models.CharField("График работы", max_length=30)
     organization_type = models.ForeignKey(
-        'src.OrganizationType', on_delete=models.PROTECT
+        "src.OrganizationType", on_delete=models.PROTECT
     )
-    is_verified = models.BooleanField(
-        "Верифицирован",
-        default=False
-    )
+    is_verified = models.BooleanField("Верифицирован", default=False)
 
     def __str__(self):
         return self.title
@@ -79,47 +66,36 @@ class Master(models.Model):
     """
 
     class Meta:
-        verbose_name = 'Мастер'
-        verbose_name_plural = 'Мастера'
+        verbose_name = "Мастер"
+        verbose_name_plural = "Мастера"
 
     telegram_id = models.CharField(
-        'ID Телеграм', max_length=30,
+        "ID Телеграм",
+        max_length=30,
         default="web_user",
     )
     code = models.CharField(
-        "Код для регистрации",
-        max_length=200,
-        null=True, blank=True
+        "Код для регистрации", max_length=200, null=True, blank=True
     )
     name = models.CharField(
-        'Имя', max_length=30,
+        "Имя",
+        max_length=30,
     )
     surname = models.CharField(
-        'Фамилия', max_length=30,
+        "Фамилия",
+        max_length=30,
     )
-    image = models.ImageField(
-        'Изображние', upload_to='master',
-        null=True, blank=True
-    )
+    image = models.ImageField("Изображние", upload_to="master", null=True, blank=True)
     image_url = models.CharField(
-        'Ссылка на изображение',
-        max_length=255,
-        null=True, blank=True
+        "Ссылка на изображение", max_length=255, null=True, blank=True
     )
     gender = models.CharField(
-        'Пол', max_length=30,
-        choices=statuses.CHOICES_GENDER,
-        default='MEN', blank=True
+        "Пол", max_length=30, choices=statuses.CHOICES_GENDER, default="MEN", blank=True
     )
     organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        verbose_name='Организация'
+        Organization, on_delete=models.CASCADE, verbose_name="Организация"
     )
-    is_verified = models.BooleanField(
-        "Верифицирован",
-        default=False
-    )
+    is_verified = models.BooleanField("Верифицирован", default=False)
 
     def __str__(self):
         return self.name
@@ -138,25 +114,22 @@ class Service(models.Model):
     """
 
     class Meta:
-        verbose_name = 'Услуга'
-        verbose_name_plural = 'Услуги'
+        verbose_name = "Услуга"
+        verbose_name_plural = "Услуги"
 
     master = models.ForeignKey(
-        'src.Master', on_delete=models.CASCADE,
+        "src.Master",
+        on_delete=models.CASCADE,
     )
-    title = models.CharField(
-        'Название', max_length=30
-    )
+    title = models.CharField("Название", max_length=30)
     short_description = models.CharField(
-        "Короткое описание",
-        max_length=150, null=True,
-        blank=True
+        "Короткое описание", max_length=150, null=True, blank=True
     )
     price = models.PositiveIntegerField(
-        'Стоимость',
+        "Стоимость",
     )
     min_time = models.IntegerField(
-        'Минимальная длительность процедуры',
+        "Минимальная длительность процедуры",
     )
 
     def __str__(self):
@@ -169,49 +142,27 @@ class Customer(models.Model):
     """
 
     class Meta:
-        verbose_name = 'Клиент'
-        verbose_name_plural = 'Клиенты'
+        verbose_name = "Клиент"
+        verbose_name_plural = "Клиенты"
 
-    telegram_id = models.CharField(
-        'ID Телеграм',
-        max_length=30,
-        default='default-user'
-    )
+    telegram_id = models.CharField("ID Телеграм", max_length=30, default="default-user")
     phone = models.CharField(
-        'Номер телефона',
-        max_length=30,
-        null=True, blank=True,
-        unique=True
+        "Номер телефона", max_length=30, null=True, blank=True, unique=True
     )
     username = models.CharField(
-        'Имя пользователя telegram',
-        max_length=30,
-        null=True, blank=True
+        "Имя пользователя telegram", max_length=30, null=True, blank=True
     )
-    name = models.CharField(
-        "Имя пользователя",
-        max_length=250,
-        null=True, blank=True
-    )
+    name = models.CharField("Имя пользователя", max_length=250, null=True, blank=True)
     additional_info = models.CharField(
-        "Дополнительная информация",
-        max_length=255,
-        null=True, blank=True
+        "Дополнительная информация", max_length=255, null=True, blank=True
     )
     code = models.CharField(
-        'Код для регистрации',
-        max_length=255,
-        null=True, blank=True
+        "Код для регистрации", max_length=255, null=True, blank=True
     )
     master = models.ForeignKey(
-        'src.Master',
-        on_delete=models.SET_NULL,
-        null=True, blank=True
+        "src.Master", on_delete=models.SET_NULL, null=True, blank=True
     )
-    is_verified = models.BooleanField(
-        "Верифицированный клиент",
-        default=False
-    )
+    is_verified = models.BooleanField("Верифицированный клиент", default=False)
 
     def __str__(self):
         return self.username or self.name
@@ -226,29 +177,16 @@ class Customer(models.Model):
 
 class Moderator(models.Model):
     class Meta:
-        verbose_name = 'Модераторы'
+        verbose_name = "Модераторы"
 
-    telegram_id = models.CharField(
-        'ID Телеграм',
-        max_length=30,
-        default='default-user'
-    )
-    login = models.CharField(
-        'Логин',
-        max_length=30,
-        unique=True
-    )
-    code = models.CharField(
-        'Код',
-        max_length=30,
-        null=True, blank=True
-    )
+    telegram_id = models.CharField("ID Телеграм", max_length=30, default="default-user")
+    login = models.CharField("Логин", max_length=30, unique=True)
+    code = models.CharField("Код", max_length=30, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if self.pk:
             pass
         else:
-
             self.code = random.randint(10000, 99999)
         return super().save(*args, **kwargs)
 

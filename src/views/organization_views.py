@@ -5,10 +5,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from src.models import Organization
-from src.serializers.organization_serializers import (OrganizationSerializer,
-                                                      OrganizationDetailSerializer)
-from src.services.organization_services import get_organization_types, search_organization, get_services_title, \
-    get_master_services
+from src.serializers.organization_serializers import (
+    OrganizationSerializer,
+    OrganizationDetailSerializer,
+)
+from src.services.organization_services import (
+    get_organization_types,
+    search_organization,
+    get_services_title,
+    get_master_services,
+)
 
 
 class OrganizationListView(APIView):
@@ -17,6 +23,7 @@ class OrganizationListView(APIView):
 
     accessed methods: GET,
     """
+
     serializer_class = OrganizationSerializer
 
     def get(self, request, *args, **kwargs):
@@ -27,14 +34,14 @@ class OrganizationListView(APIView):
             organization_serializer = OrganizationSerializer(
                 instance=organization_queryset,
                 many=True,
-                context={'request': self.request}
+                context={"request": self.request},
             )
 
             return Response(
                 {
-                    'message': "All organizations success received",
-                    'success': True,
-                    'data': organization_serializer.data
+                    "message": "All organizations success received",
+                    "success": True,
+                    "data": organization_serializer.data,
                 }
             )
         except ValueError as ex:
@@ -53,31 +60,31 @@ class OrganizationDetailView(APIView):
         try:
             organization = Organization.objects.get(id=organization_id)
             organization_serializer = OrganizationDetailSerializer(
-                instance=organization,
-                context={'request': self.request})
+                instance=organization, context={"request": self.request}
+            )
 
-            return Response({
-                'message': 'Organization detail success received',
-                'success': True,
-                'data': organization_serializer.data
-            },
-                status=200
+            return Response(
+                {
+                    "message": "Organization detail success received",
+                    "success": True,
+                    "data": organization_serializer.data,
+                },
+                status=200,
             )
         except Organization.DoesNotExist:
             return Response(
                 {
-                    'message': "Such organization does not exist",
-                    'success': False,
-                    'data': []
+                    "message": "Such organization does not exist",
+                    "success": False,
+                    "data": [],
                 },
-                status=404
+                status=404,
             )
 
 
 class OrganizationTypeListView(APIView):
-
     def get(self, *args, **kwargs):
-        """ Получение списка типов организаций """
+        """Получение списка типов организаций"""
         return get_organization_types()
 
 
@@ -87,38 +94,37 @@ class ServiceListView(APIView):
     """
 
     def get(self, *args, **kwargs):
-        """ Получение списка услуг """
+        """Получение списка услуг"""
         return get_services_title()
 
 
 class SearchOrganization(APIView):
     @extend_schema(
-        description='Search organization',
+        description="Search organization",
         methods=["GET"],
         parameters=[
             OpenApiParameter(
-                name='search',
+                name="search",
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Search text'
+                description="Search text",
             ),
-        ])
+        ],
+    )
     def get(self, *args, **kwargs):
         """
-            search: query params from url ".../organization/?search="
-            search: string
+        search: query params from url ".../organization/?search="
+        search: string
         """
-        if text := self.request.query_params.get('search'):
+        if text := self.request.query_params.get("search"):
             return search_organization(text)
 
-        return Response({
-            'message': "Запрос успешно выполнен",
-            'success': True,
-            'data': []
-        })
+        return Response(
+            {"message": "Запрос успешно выполнен", "success": True, "data": []}
+        )
 
 
 class MasterListView(APIView):
     def get(self, *args, **kwargs) -> Response:
-        """ Получаем все услуги мастера """
-        return get_master_services(self.request.query_params.get('master_id', 0))
+        """Получаем все услуги мастера"""
+        return get_master_services(self.request.query_params.get("master_id", 0))

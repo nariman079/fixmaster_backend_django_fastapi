@@ -4,20 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0017_alter_booking_booking_end_time'),
+        ("src", "0017_alter_booking_booking_end_time"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='image',
-            name='image_url',
+            model_name="image",
+            name="image_url",
             field=models.CharField(blank=True, max_length=700, null=True),
         ),
         migrations.AlterField(
-            model_name='image',
-            name='image',
-            field=models.ImageField(blank=True, null=True, upload_to='images/', verbose_name='Изображение'),
+            model_name="image",
+            name="image",
+            field=models.ImageField(
+                blank=True, null=True, upload_to="images/", verbose_name="Изображение"
+            ),
         ),
     ]

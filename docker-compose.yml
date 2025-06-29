@@ -2,9 +2,6 @@ version: '3'
 
 services:
   # Redis
-
-
-
   redis:
     image: 'redis:alpine'
     restart: always

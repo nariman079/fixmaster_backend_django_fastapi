@@ -2,36 +2,35 @@ from datetime import datetime
 
 from django.db.models import F
 from django.db.transaction import atomic
-from config.settings import dict_get, dict_set, cache
+from config.settings import dict_get, cache
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from src.serializers.organization_serializers import OrganizationDetailSerializer
 from src.models import Customer, Organization, Master, Moderator, Service, Image
-from src.tasks import (send_message_on_moderator_about_organization,
-                       send_message_about_verify_master,
-                       send_is_verified_organization,
-                       send_message_about_verify_customer)
+from src.tasks import (
+    send_message_on_moderator_about_organization,
+    send_message_about_verify_master,
+    send_is_verified_organization,
+    send_message_about_verify_customer,
+)
 
 
 def check_organization_exist(contact_phone) -> Response:
-    """ Проверка существования организации в БД """
+    """Проверка существования организации в БД"""
     organization = Organization.objects.filter(contact_phone=contact_phone).first()
     if organization:
         raise ValidationError(
             {
-                'message': "Такая организация уже есть в системе",
-                'success': False,
-                'data': []
-            }, code=400
+                "message": "Такая организация уже есть в системе",
+                "success": False,
+                "data": [],
+            },
+            code=400,
         )
     return Response(
-        {
-            'message': 'Такой организации нет в системе',
-            'success': True,
-            'data': []
-        },
-        status=200
+        {"message": "Такой организации нет в системе", "success": True, "data": []},
+        status=200,
     )
 
 
@@ -54,11 +53,11 @@ def next_session(start_date, start_time):
     days = days % 30
 
     if months > 0:
-        result_text += f' {months} месяцев,'
+        result_text += f" {months} месяцев,"
     if days > 0:
-        result_text += f' {days} дней,'
+        result_text += f" {days} дней,"
     if hours > 0:
-        result_text += f' {hours} часов,'
+        result_text += f" {hours} часов,"
 
     output = f"{result_text} {minutes} минут."
 
@@ -66,22 +65,20 @@ def next_session(start_date, start_time):
 
 
 class GetProfile:
-    def __init__(
-            self,
-            data: dict
-    ):
+    def __init__(self, data: dict):
         try:
-            self.phone_number = data['phone_number']
-            self.username = data['username']
-            self.telegram_id = data['telegram_id']
-            self.user_keyword = data['user_keyword']
+            self.phone_number = data["phone_number"]
+            self.username = data["username"]
+            self.telegram_id = data["telegram_id"]
+            self.user_keyword = data["user_keyword"]
         except Exception as error:
             raise ValidationError(
                 {
-                    'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
-                    'success': False,
-                    'data': '\n'.join(error.args)
-                }, code=422
+                    "message": "Неизвествная ошибка\nОбратитесь к администратору @nariman079i",
+                    "success": False,
+                    "data": "\n".join(error.args),
+                },
+                code=422,
             )
 
     def _get_customer_from_db(self) -> None:
@@ -90,19 +87,18 @@ class GetProfile:
         """
         self.customer = Customer.objects.filter(phone=self.phone_number).first()
         if not self.customer:
-            raise ValidationError({
-                "message": "Такого клиента нет в системе"
-            })
+            raise ValidationError({"message": "Такого клиента нет в системе"})
 
     def _check_user_keyword(self):
-        """ Проверка ключегово слова """
+        """Проверка ключегово слова"""
         if self.customer.user_keyword != self.user_keyword:
             raise ValidationError(
                 {
-                    'message': "Вы неправильно указали слово пароля",
-                    'success': False,
-                    'data': []
-                }, code=400
+                    "message": "Вы неправильно указали слово пароля",
+                    "success": False,
+                    "data": [],
+                },
+                code=400,
             )
 
     def _fill_telegram_user_data(self) -> None:
@@ -120,54 +116,50 @@ class GetProfile:
 
         return Response(
             {
-                'message': "Вы успешно авторизовались\nВы будете получать уведомления о брони",
-                'success': True,
+                "message": "Вы успешно авторизовались\nВы будете получать уведомления о брони",
+                "success": True,
             }
         )
 
 
 class BotOrganizationCreate:
-    """ Создание организации """
+    """Создание организации"""
 
-    def __init__(
-            self,
-            organization_data: dict
-    ):
+    def __init__(self, organization_data: dict):
         try:
-
             self.organization = organization_data
-            self.gallery = self.organization.pop('gallery')
-        except Exception as error:
+            self.gallery = self.organization.pop("gallery")
+        except Exception:
             raise ValidationError(
                 {
-                    'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i\n",
-                    'success': False,
-                    'data': {}
-                }, code=422
+                    "message": "Неизвествная ошибка\nОбратитесь к администратору @nariman079i\n",
+                    "success": False,
+                    "data": {},
+                },
+                code=422,
             )
 
     def _create_organization(self):
         try:
-
-            self.organization_obj: Organization = Organization.objects.create(**self.organization)
+            self.organization_obj: Organization = Organization.objects.create(
+                **self.organization
+            )
 
         except Exception as error:
-
             raise ValidationError(
                 {
-                    'message': "Неизвестная ошибка\nОбратитесь к администратору @nariman079i\n",
-                    'status': False,
-                    'data': error.args
-                }, code=422
+                    "message": "Неизвестная ошибка\nОбратитесь к администратору @nariman079i\n",
+                    "status": False,
+                    "data": error.args,
+                },
+                code=422,
             )
 
     def _create_gallery(self):
-
         if self.gallery:
             for image_url in self.gallery:
                 Image.objects.create(
-                    organization=self.organization_obj,
-                    image_url=image_url
+                    organization=self.organization_obj, image_url=image_url
                 )
 
     def _send_notification(self):
@@ -180,32 +172,31 @@ class BotOrganizationCreate:
         self._create_gallery()
         return Response(
             {
-                'message': "Вы успешно авторизовались\nВы будете получать уведомления о брони",
-                'success': True,
-                'data': self.organization
-            }, status=201
+                "message": "Вы успешно авторизовались\nВы будете получать уведомления о брони",
+                "success": True,
+                "data": self.organization,
+            },
+            status=201,
         )
 
 
 class BotMasterGetProfile:
-    """ Создание организации """
+    """Создание организации"""
 
-    def __init__(
-            self,
-            master_data: dict
-    ):
+    def __init__(self, master_data: dict):
         try:
-            self.telegram_id = master_data['telegram_id']
-            self.code = master_data['code']
-            self.name = master_data['name']
+            self.telegram_id = master_data["telegram_id"]
+            self.code = master_data["code"]
+            self.name = master_data["name"]
 
-        except Exception as error:
+        except Exception:
             raise ValidationError(
                 {
-                    'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i\n",
-                    'success': False,
-                    'data': {}
-                }, code=422
+                    "message": "Неизвествная ошибка\nОбратитесь к администратору @nariman079i\n",
+                    "success": False,
+                    "data": {},
+                },
+                code=422,
             )
 
     def _get_master(self):
@@ -216,13 +207,13 @@ class BotMasterGetProfile:
             master.telegram_id = self.telegram_id
 
         except Exception as error:
-
             raise ValidationError(
                 {
-                    'message': "Неизвестная ошибка\nОбратитесь к администратору @nariman079i\n",
-                    'status': False,
-                    'data': error.args
-                }, code=422
+                    "message": "Неизвестная ошибка\nОбратитесь к администратору @nariman079i\n",
+                    "status": False,
+                    "data": error.args,
+                },
+                code=422,
             )
 
     def execute(self):
@@ -230,62 +221,61 @@ class BotMasterGetProfile:
         # self._send_notification()
         return Response(
             {
-                'message': "Вы успешно авторизовались\nВы будете получать уведомления о брони",
-                'success': True,
-                'data': self.organization
-            }, status=201
+                "message": "Вы успешно авторизовались\nВы будете получать уведомления о брони",
+                "success": True,
+                "data": self.organization,
+            },
+            status=201,
         )
 
 
 class BotModeratorGetProfile:
-    """ Создание организации """
+    """Создание организации"""
 
-    def __init__(
-            self,
-            moderator_data: dict
-    ):
+    def __init__(self, moderator_data: dict):
         try:
-            self.telegram_id = moderator_data['telegram_id']
-            self.code = moderator_data['code']
-            self.login = moderator_data['login']
+            self.telegram_id = moderator_data["telegram_id"]
+            self.code = moderator_data["code"]
+            self.login = moderator_data["login"]
 
-        except Exception as error:
+        except Exception:
             raise ValidationError(
                 {
-                    'message': "Неизвествная ошибка\nОбратитесь к администратору @nariman079i\n",
-                    'success': False,
-                    'code': 422,
-                    'data': {}
+                    "message": "Неизвествная ошибка\nОбратитесь к администратору @nariman079i\n",
+                    "success": False,
+                    "code": 422,
+                    "data": {},
                 }
             )
 
     def _get_moderator(self):
+        """Получение модератора"""
         moderator = Moderator.objects.filter(login=self.login).first()
         if moderator.telegram_id == self.telegram_id:
             raise ValidationError(
                 {
-                    'message': "Вы уже зарегистрированы в системе",
-                    'success': True,
-                    'code': 440,
-                    'data': []
+                    "message": "Вы уже зарегистрированы в системе",
+                    "success": True,
+                    "code": 440,
+                    "data": [],
                 }
             )
         if not moderator:
             raise ValidationError(
                 {
-                    'message': 'Модератор с таком логином не зарегистрирован',
-                    'success': False,
-                    'code': 404,
-                    'data': []
+                    "message": "Модератор с таком логином не зарегистрирован",
+                    "success": False,
+                    "code": 404,
+                    "data": [],
                 }
             )
         if not (moderator and str(moderator.code).strip() == str(self.code).strip()):
             raise ValidationError(
                 {
-                    'message': "Вы неправильно ввели код\nПопробуйте еще раз",
-                    'status': False,
-                    'code': 400,
-                    'data': []
+                    "message": "Вы неправильно ввели код\nПопробуйте еще раз",
+                    "status": False,
+                    "code": 400,
+                    "data": [],
                 }
             )
 
@@ -297,18 +287,19 @@ class BotModeratorGetProfile:
 
         return Response(
             {
-                'message': "Вы успешно авторизовались\nВы будете получать заявки на верификацию организаций",
-                'success': True,
-                'code': 201,
-                'data': []
-            }, status=201
+                "message": "Вы успешно авторизовались\nВы будете получать заявки на верификацию организаций",
+                "success": True,
+                "code": 201,
+                "data": [],
+            },
+            status=201,
         )
 
 
 class BotVerifyOrganization:
     def __init__(self, verify_organization_data: dict):
-        self.organization_id = verify_organization_data['organization_id']
-        self.is_verify = verify_organization_data['is_verify']
+        self.organization_id = verify_organization_data["organization_id"]
+        self.is_verify = verify_organization_data["is_verify"]
 
     def get_organization(self):
         self.organization = Organization.objects.filter(pk=self.organization_id).first()
@@ -324,55 +315,59 @@ class BotVerifyOrganization:
         self.get_organization()
         self.check_verify()
         self.send_notification()
-        return Response({
-            'message': ""
-        })
+        return Response({"message": ""})
 
 
 class BotGetOrganizationByTelegramId:
     def __init__(self, organization_data: dict):
-        self.telegram_id = organization_data['telegram_id']
-        print(dict_get(self.telegram_id), 'TEST')
+        self.telegram_id = organization_data["telegram_id"]
+        print(dict_get(self.telegram_id), "TEST")
 
     def get_organization(self):
-        self.organization = Organization.objects.filter(telegram_id=self.telegram_id).first()
+        self.organization = Organization.objects.filter(
+            telegram_id=self.telegram_id
+        ).first()
 
     def check_organization(self):
         if self.organization:
             raise ValidationError(
                 {
-                    'message': "Вы уже есть в системе",
-                    'success': False,
-                    'data': [],
-                    'code': 400
+                    "message": "Вы уже есть в системе",
+                    "success": False,
+                    "data": [],
+                    "code": 400,
                 }
             )
 
     def execute(self):
         self.get_organization()
         self.check_organization()
-        return Response({
-            'message': "Такого аккаунта нет в системе",
-            'success': True,
-            'data': []
-        }, status=200)
+        return Response(
+            {"message": "Такого аккаунта нет в системе", "success": True, "data": []},
+            status=200,
+        )
 
 
 class BotGetOrganizationDataByTelegramId:
     def __init__(self, organization_data: dict):
-        self.telegram_id = organization_data['telegram_id']
+        self.telegram_id = organization_data["telegram_id"]
 
     def get_organization(self):
-        self.organization = Organization.objects.filter(telegram_id=self.telegram_id).first()
+        self.organization = Organization.objects.filter(
+            telegram_id=self.telegram_id
+        ).first()
 
     def execute(self):
         self.get_organization()
 
-        return Response({
-            'message': "Данные успешно получены",
-            'success': True,
-            'data': OrganizationDetailSerializer(instance=self.organization).data
-        }, status=200)
+        return Response(
+            {
+                "message": "Данные успешно получены",
+                "success": True,
+                "data": OrganizationDetailSerializer(instance=self.organization).data,
+            },
+            status=200,
+        )
 
 
 class MasterDeleteSrv:
@@ -403,21 +398,24 @@ class MasterCreateSrv:
         except:
             raise ValidationError(
                 {
-                    'message': "Не удалось создать мастера",
-                    'code': 422,
-                    'success': False,
-                    'data': []
+                    "message": "Не удалось создать мастера",
+                    "code": 422,
+                    "success": False,
+                    "data": [],
                 }
             )
 
     def execute(self):
         self.create_master()
 
-        return Response({
-            'message': "Мастер успешно создан",
-            'success': True,
-            'data': self.master.code
-        }, status=201)
+        return Response(
+            {
+                "message": "Мастер успешно создан",
+                "success": True,
+                "data": self.master.code,
+            },
+            status=201,
+        )
 
 
 class MasterEditSrv:
@@ -436,52 +434,42 @@ class MasterEditSrv:
         self.get_master()
         self.update_master()
         return Response(
-            {
-                'message': 'Мастер изменен',
-                'success': True,
-                'data': []
-            }, status=200
+            {"message": "Мастер изменен", "success": True, "data": []}, status=200
         )
 
 
 class MasterServiceListSrv:
     def __init__(self, *args, **kwargs):
-        self.master_id = kwargs.get('master_id')
+        self.master_id = kwargs.get("master_id")
 
     def get_master_services(self):
         self.master = Master.objects.filter(pk=self.master_id).first()
         self.master_services = self.master.service_set.values(
-            'id',
-            'title',
-            'short_description',
-            'price',
-            'min_time',
-            'master_id'
+            "id", "title", "short_description", "price", "min_time", "master_id"
         )
 
     def execute(self):
         self.get_master_services()
-        return Response({
-            'message': "Запрос прошел успешно",
-            'success': True,
-            'data': self.master_services
-        }, status=200)
+        return Response(
+            {
+                "message": "Запрос прошел успешно",
+                "success": True,
+                "data": self.master_services,
+            },
+            status=200,
+        )
 
 
 class MasterServiceCreateSrv:
     def __init__(self, *args, **kwargs):
-        self.master_id = kwargs.get('master_id')
-        self.service_data = kwargs.get('service_data')
+        self.master_id = kwargs.get("master_id")
+        self.service_data = kwargs.get("service_data")
 
     def get_master(self):
         self.master = Master.objects.filter(pk=self.master_id).first()
         if not self.master:
             raise ValidationError(
-                {
-                    'message': 'Нет такого мастера',
-                    'success': False,
-                    'data': []
-                }
+                {"message": "Нет такого мастера", "success": False, "data": []}
             )
 
     def create_service(self):
@@ -490,18 +478,16 @@ class MasterServiceCreateSrv:
     def execute(self):
         self.get_master()
         self.create_service()
-        return Response({
-            'message': "Запрос прошел успешно",
-            'success': True,
-            'data': {}
-        }, status=201
+        return Response(
+            {"message": "Запрос прошел успешно", "success": True, "data": {}},
+            status=201,
         )
 
 
 class MasterServiceEditSrv:
     def __init__(self, *args, **kwargs):
-        self.service_id = kwargs.get('service_id')
-        self.service_data = kwargs.get('service_data')
+        self.service_id = kwargs.get("service_id")
+        self.service_data = kwargs.get("service_data")
 
     def get_and_update_service(self):
         self.service = Service.objects.filter(pk=self.service_id)
@@ -509,16 +495,14 @@ class MasterServiceEditSrv:
 
     def execute(self):
         self.get_and_update_service()
-        return Response({
-            'message': "Запрос прошел успешно",
-            'success': True,
-            'data': {}
-        }, 200)
+        return Response(
+            {"message": "Запрос прошел успешно", "success": True, "data": {}}, 200
+        )
 
 
 class MasterServiceDeleteSrv:
     def __init__(self, *args, **kwargs):
-        self.service_id = kwargs.get('service_id')
+        self.service_id = kwargs.get("service_id")
 
     def get_and_delete_service(self):
         self.service = Service.objects.filter(pk=self.service_id)
@@ -526,43 +510,31 @@ class MasterServiceDeleteSrv:
 
     def execute(self):
         self.get_and_delete_service()
-        return Response({
-            'message': "Запрос прошел успешно",
-            'success': True,
-            'data': {}
-        }, status=204)
+        return Response(
+            {"message": "Запрос прошел успешно", "success": True, "data": {}},
+            status=204,
+        )
 
 
 class MasterServiceDetailSrv:
     def __init__(self, *args, **kwargs):
-        self.service_id = kwargs.get('service_id')
+        self.service_id = kwargs.get("service_id")
 
     def get_master_service_detail(self):
         self.services = Service.objects.filter(pk=self.service_id)
         if not self.services:
             raise ValidationError(
-                {
-                    'message': 'Такой услуги нет в системе',
-                    'success': False,
-                    'data': {}
-                }
+                {"message": "Такой услуги нет в системе", "success": False, "data": {}}
             )
         self.service = self.services.values(
-            'id',
-            'title',
-            'short_description',
-            'price',
-            'min_time',
-            'master_id'
+            "id", "title", "short_description", "price", "min_time", "master_id"
         ).first()
 
     def execute(self):
         self.get_master_service_detail()
-        return Response({
-            'message': "Запрос прошел успешно",
-            'success': True,
-            'data': self.service
-        })
+        return Response(
+            {"message": "Запрос прошел успешно", "success": True, "data": self.service}
+        )
 
 
 class CustomerListSrv:
@@ -576,11 +548,7 @@ class CustomerListSrv:
 
     def execute(self):
         self.get_organization_customers()
-        return Response(
-            {
-                'message': 'Запрос прощел успешно'
-            }
-        )
+        return Response({"message": "Запрос прощел успешно"})
 
 
 class MasterVerifySrv:
@@ -589,28 +557,30 @@ class MasterVerifySrv:
         self.telegram_id = telegram_id
 
     def get_master_by_code(self):
-        self.master = Master.objects.filter(
-            code=self.code
-        ).first()
+        self.master = Master.objects.filter(code=self.code).first()
         print(self.master)
 
     def check_master(self):
         if self.master:
             if self.master.is_verified:
-                raise ValidationError({
-                    'message': 'Такой пользователь уже есть в системе',
-                    'data': [],
-                    'success': True
-                })
+                raise ValidationError(
+                    {
+                        "message": "Такой пользователь уже есть в системе",
+                        "data": [],
+                        "success": True,
+                    }
+                )
             self.master.telegram_id = self.telegram_id
             self.master.is_verified = True
             self.master.save()
         else:
-            raise ValidationError({
-                'message': 'Такого пользователя нет в системе\nПопробуйте еще раз',
-                'data': [],
-                'success': True
-            })
+            raise ValidationError(
+                {
+                    "message": "Такого пользователя нет в системе\nПопробуйте еще раз",
+                    "data": [],
+                    "success": True,
+                }
+            )
 
     def send_notification(self):
         if self.master:
@@ -621,20 +591,13 @@ class MasterVerifySrv:
         self.check_master()
         self.send_notification()
         return Response(
-            {
-                'message': 'Вы авторизованы',
-                'success': True,
-                'data': []
-            }, status=200
+            {"message": "Вы авторизованы", "success": True, "data": []}, status=200
         )
 
 
 class MasterCustomers:
-    def __init__(
-            self,
-            serializer_data: dict
-    ):
-        self.telegram_id = serializer_data.get('telegram_id')
+    def __init__(self, serializer_data: dict):
+        self.telegram_id = serializer_data.get("telegram_id")
 
     def get_master(self):
         self.master = Master.objects.filter(telegram_id=self.telegram_id).first()
@@ -642,17 +605,14 @@ class MasterCustomers:
         if not self.master:
             raise ValidationError(
                 {
-                    'message': "Такого мастера нет в системе",
-                    'success': False,
-                    'data': []
+                    "message": "Такого мастера нет в системе",
+                    "success": False,
+                    "data": [],
                 }
             )
 
     def get_master_clients(self):
-        self.customers = self.master.customer_set.all().values(
-            'id',
-            'username'
-        )
+        self.customers = self.master.customer_set.all().values("id", "username")
         print(self.customers)
 
     def execute(self):
@@ -660,19 +620,16 @@ class MasterCustomers:
         self.get_master_clients()
         return Response(
             {
-                'message': 'Список клиентов получен',
-                'success': True,
-                'data': self.customers
+                "message": "Список клиентов получен",
+                "success": True,
+                "data": self.customers,
             }
         )
 
 
 class MasterNextSessionSrv:
-    def __init__(
-            self,
-            serializer_data: dict
-    ):
-        self.telegram_id = serializer_data.get('telegram_id')
+    def __init__(self, serializer_data: dict):
+        self.telegram_id = serializer_data.get("telegram_id")
 
     def get_master(self):
         self.master = Master.objects.filter(telegram_id=self.telegram_id).first()
@@ -680,23 +637,26 @@ class MasterNextSessionSrv:
         if not self.master:
             raise ValidationError(
                 {
-                    'message': "Такого мастера нет в системе",
-                    'success': False,
-                    'data': []
+                    "message": "Такого мастера нет в системе",
+                    "success": False,
+                    "data": [],
                 }
             )
 
     def get_master_bookings(self):
         self.booking = (
-            self.master.booking_set.filter(
-                booking_date__gte=datetime.now().date(),
-                booking_time__gte=datetime.now().time())
-            .order_by('booking_date')
-            .order_by('booking_time')
-        ).annotate(
-            start_time=F('booking_time'),
-            start_date=F('booking_date')
-        ).values('start_time', 'start_date').first()
+            (
+                self.master.booking_set.filter(
+                    booking_date__gte=datetime.now().date(),
+                    booking_time__gte=datetime.now().time(),
+                )
+                .order_by("booking_date")
+                .order_by("booking_time")
+            )
+            .annotate(start_time=F("booking_time"), start_date=F("booking_date"))
+            .values("start_time", "start_date")
+            .first()
+        )
 
     def complete_time(self):
         self.next_time = next_session(**self.booking)
@@ -706,30 +666,17 @@ class MasterNextSessionSrv:
         self.get_master_bookings()
         if not self.booking:
             return Response(
-                {
-                    'message': 'У вас нет броней',
-                    'success': True,
-                    'data': []
-                }
+                {"message": "У вас нет броней", "success": True, "data": []}
             )
 
         self.complete_time()
 
-        return Response(
-            {
-                'message': self.next_time,
-                'success': True,
-                'data': []
-            }
-        )
+        return Response({"message": self.next_time, "success": True, "data": []})
 
 
 class CustomerNextSessionSrv:
-    def __init__(
-            self,
-            serializer_data: dict
-    ):
-        self.telegram_id = serializer_data.get('telegram_id')
+    def __init__(self, serializer_data: dict):
+        self.telegram_id = serializer_data.get("telegram_id")
 
     def get_client(self):
         self.customer = Customer.objects.filter(telegram_id=self.telegram_id).first()
@@ -737,23 +684,26 @@ class CustomerNextSessionSrv:
         if not self.customer:
             raise ValidationError(
                 {
-                    'message': "Такого клиента нет в системе",
-                    'success': False,
-                    'data': []
+                    "message": "Такого клиента нет в системе",
+                    "success": False,
+                    "data": [],
                 }
             )
 
     def get_customer_bookings(self):
         self.booking = (
-            self.customer.master.booking_set.filter(
-                booking_date__gte=datetime.now().date(),
-                booking_time__gte=datetime.now().time())
-            .order_by('booking_date')
-            .order_by('booking_time')
-        ).annotate(
-            start_time=F('booking_time'),
-            start_date=F('booking_date')
-        ).values('start_time', 'start_date').first()
+            (
+                self.customer.master.booking_set.filter(
+                    booking_date__gte=datetime.now().date(),
+                    booking_time__gte=datetime.now().time(),
+                )
+                .order_by("booking_date")
+                .order_by("booking_time")
+            )
+            .annotate(start_time=F("booking_time"), start_date=F("booking_date"))
+            .values("start_time", "start_date")
+            .first()
+        )
 
     def complete_time(self):
         self.next_time = next_session(**self.booking)
@@ -763,22 +713,12 @@ class CustomerNextSessionSrv:
         self.get_customer_bookings()
         if not self.booking:
             return Response(
-                {
-                    'message': 'У вас нет броней',
-                    'success': True,
-                    'data': []
-                }
+                {"message": "У вас нет броней", "success": True, "data": []}
             )
 
         self.complete_time()
 
-        return Response(
-            {
-                'message': self.next_time,
-                'success': True,
-                'data': []
-            }
-        )
+        return Response({"message": self.next_time, "success": True, "data": []})
 
 
 class CustomerVerifySrv:
@@ -788,43 +728,43 @@ class CustomerVerifySrv:
         self.username = serializer_data.get("username")
 
     def get_customer_by_code(self):
-        self.customer = Customer.objects.filter(
-            code=self.code
-        ).first()
+        self.customer = Customer.objects.filter(code=self.code).first()
 
     def verify_customer(self):
         if self.customer:
             if self.customer.is_verified:
-                raise ValidationError({
-                    'message': 'Такой пользователь уже есть в системе',
-                    'data': [],
-                    'success': True
-                })
+                raise ValidationError(
+                    {
+                        "message": "Такой пользователь уже есть в системе",
+                        "data": [],
+                        "success": True,
+                    }
+                )
             self.customer.telegram_id = self.telegram_id
             self.customer.is_verified = True
             self.customer.username = self.username
             self.customer.save()
         else:
-            raise ValidationError({
-                'message': 'Такого пользователя нет в системе\nПопробуйте еще раз',
-                'data': [],
-                'success': True
-            })
+            raise ValidationError(
+                {
+                    "message": "Такого пользователя нет в системе\nПопробуйте еще раз",
+                    "data": [],
+                    "success": True,
+                }
+            )
 
     def send_notification(self):
         if self.customer:
-            send_message_about_verify_customer.delay(self.customer.master.telegram_id, self.telegram_id)
+            send_message_about_verify_customer.delay(
+                self.customer.master.telegram_id, self.telegram_id
+            )
 
     def execute(self):
         self.get_customer_by_code()
         self.verify_customer()
         self.send_notification()
         return Response(
-            {
-                'message': 'Вы авторизованы',
-                'success': True,
-                'data': []
-            }, status=200
+            {"message": "Вы авторизованы", "success": True, "data": []}, status=200
         )
 
 
@@ -833,21 +773,20 @@ class CheckCustomerSrv:
         self.telegram_id = serializer_data.get("telegram_id")
 
     def get_customer_by_code(self):
-        self.customer = Customer.objects.filter(
-            telegram_id=self.telegram_id
-        ).values('telegram_id', 'name', 'phone').first()
+        self.customer = (
+            Customer.objects.filter(telegram_id=self.telegram_id)
+            .values("telegram_id", "name", "phone")
+            .first()
+        )
 
     def execute(self):
         self.get_customer_by_code()
 
         if self.customer:
             return Response(
-                {
-                    'data': self.customer
-                }, status=200,
+                {"data": self.customer},
+                status=200,
             )
 
         else:
-            return Response(
-                status=404
-            )
+            return Response(status=404)

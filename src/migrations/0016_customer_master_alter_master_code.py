@@ -5,20 +5,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0015_master_image_url_alter_master_image'),
+        ("src", "0015_master_image_url_alter_master_image"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customer',
-            name='master',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='src.master'),
+            model_name="customer",
+            name="master",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="src.master",
+            ),
         ),
         migrations.AlterField(
-            model_name='master',
-            name='code',
-            field=models.CharField(blank=True, max_length=200, null=True, verbose_name='Код для регистрации'),
+            model_name="master",
+            name="code",
+            field=models.CharField(
+                blank=True,
+                max_length=200,
+                null=True,
+                verbose_name="Код для регистрации",
+            ),
         ),
     ]

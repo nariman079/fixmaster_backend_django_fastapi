@@ -7,15 +7,12 @@ class ImageSerializer(serializers.ModelSerializer):
     """
     A serializer for image model
     """
+
     image = serializers.SerializerMethodField()
 
     class Meta:
         model = Image
-        fields = (
-            'id',
-            'image',
-            'priority'
-        )
+        fields = ("id", "image", "priority")
 
     def get_image(self, obj):
-        return get_full_url(self, obj, 'image')
+        return get_full_url(self, obj, "image")

@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0005_alter_order_customer_alter_order_customer_notice'),
+        ("src", "0005_alter_order_customer_alter_order_customer_notice"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='order',
-            name='customer_notice',
-            field=models.CharField(blank=True, max_length=120, null=True, verbose_name='Коментарий'),
+            model_name="order",
+            name="customer_notice",
+            field=models.CharField(
+                blank=True, max_length=120, null=True, verbose_name="Коментарий"
+            ),
         ),
     ]

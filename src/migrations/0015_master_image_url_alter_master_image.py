@@ -4,20 +4,26 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0014_alter_moderator_login'),
+        ("src", "0014_alter_moderator_login"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='master',
-            name='image_url',
-            field=models.CharField(blank=True, max_length=255, null=True, verbose_name='Ссылка на изображение'),
+            model_name="master",
+            name="image_url",
+            field=models.CharField(
+                blank=True,
+                max_length=255,
+                null=True,
+                verbose_name="Ссылка на изображение",
+            ),
         ),
         migrations.AlterField(
-            model_name='master',
-            name='image',
-            field=models.ImageField(blank=True, null=True, upload_to='master', verbose_name='Изображние'),
+            model_name="master",
+            name="image",
+            field=models.ImageField(
+                blank=True, null=True, upload_to="master", verbose_name="Изображние"
+            ),
         ),
     ]

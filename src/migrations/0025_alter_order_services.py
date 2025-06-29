@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0024_alter_customer_code'),
+        ("src", "0024_alter_customer_code"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='order',
-            name='services',
-            field=models.ManyToManyField(to='src.service'),
+            model_name="order",
+            name="services",
+            field=models.ManyToManyField(to="src.service"),
         ),
     ]

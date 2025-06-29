@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0011_alter_master_code'),
+        ("src", "0011_alter_master_code"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='organization',
-            name='main_image_url',
+            model_name="organization",
+            name="main_image_url",
             field=models.CharField(blank=True, max_length=400, null=True),
         ),
     ]

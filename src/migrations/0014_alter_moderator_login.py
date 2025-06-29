@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0013_moderator_alter_organization_main_image'),
+        ("src", "0013_moderator_alter_organization_main_image"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='moderator',
-            name='login',
-            field=models.CharField(max_length=30, unique=True, verbose_name='Логин'),
+            model_name="moderator",
+            name="login",
+            field=models.CharField(max_length=30, unique=True, verbose_name="Логин"),
         ),
     ]

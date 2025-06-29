@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0007_alter_customer_telegram_id'),
+        ("src", "0007_alter_customer_telegram_id"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='master',
-            name='telegram_id',
-            field=models.CharField(default='web_user', max_length=30, verbose_name='ID Телеграм'),
+            model_name="master",
+            name="telegram_id",
+            field=models.CharField(
+                default="web_user", max_length=30, verbose_name="ID Телеграм"
+            ),
         ),
     ]
