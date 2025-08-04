@@ -37,7 +37,6 @@ class BotTestCase(APITestCase):
         self.assertEqual(response.status_code, 422)
 
     def test_create_organization_from_bot(self):
-        headers = {"Api-Key": "test"}
         data = {
             "telegram_id": "11111",
             "title": "title",
