@@ -1,0 +1,29 @@
+groups:
+  - name: django-alerts
+    rules:
+      - alert: DjangoHighHTTPErrorRate
+        expr: rate(django_http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP 5xx error rate for Django"
+          description: "Django is returning too many 5xx errors ({{ $value }} errors/sec)"
+
+      - alert: DjangoDown
+        expr: up{job="django"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Django application is down"
+          description: "Django application has been down for more than 1 minute"
+
+      - alert: DjangoHighLatency
+        expr: histogram_quantile(0.95, rate(django_http_request_duration_seconds_bucket[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency for Django"
+          description: "Django request latency is above 1s (95th percentile)"

@@ -9,6 +9,8 @@ from django.db.models import Sum
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from config import csm_metrics
+
 from src.tasks import send_message_telegram_on_master, change_status_order
 from src.models import Order, Booking, Service, Customer, Organization
 
@@ -73,6 +75,9 @@ class OrderCreateSrv:
 
     def _get_all_services(self) -> None:
         self.serivces = Service.objects.filter(id__in=self.service_ids)
+
+        
+
         if not self.serivces:
             raise ValidationError(
                 {"message": "Нет таких услуг в системе", "success": False, "data": []},
@@ -125,9 +130,17 @@ class OrderCreateSrv:
                 name=self.customer_name,
                 master_id=self.master_id,
             )
+            csm_metrics.APP_CUSTOMER_COUNT.inc()
+            csm_metrics.APP_CUSTOMER_NEW_COUNTER.inc()
+            print("Добавление нового клиента")
+
         else:
             self.customer.name = self.customer_name
             self.customer.save()
+            csm_metrics.APP_CUSTOMER_RETURNING_COUNTER.inc()
+            print("Добавление существующего клиента")
+
+
         self.booking.customer = self.customer
         self.booking.save()
 
@@ -166,9 +179,19 @@ class OrderCreateSrv:
         self._create_order()
         self._create_booking()
         self._create_customer()
-        self._send_notification_on_master()
-        self._send_order_status_check()
+        for service in self.serivces:
+            csm_metrics.APP_SERVICE_SOLD_COUNTER.labels(
+                service_id=service.pk, 
+                service_name=service.title,
+                service_price=service.price
+            ).inc() 
+        # self._send_notification_on_master()
+        # self._send_order_status_check()
 
+        csm_metrics.APP_ORDERS_TOTAL_COUNTER.inc()
+        csm_metrics.APP_ORDERS_NEW_TODAY.inc()
+        csm_metrics.APP_ORDER_LENGTH_HISTOGRAM.observe(self.summed_num or 60)
+        print("Успешное создание заказа!!")
         return Response(
             {
                 "message": "Заказ успешно создан",
@@ -243,22 +266,29 @@ class FreeBookingSrv:
         """
         Run commands
         """
-        if is_retroactive_date(self.date):
-            self._generate_organization_times()
-            self.free_times = [{"time": i, "is_free": False} for i in self.times]
-            return Response(
-                {
-                    "message": "All times has been received",
-                    "success": True,
-                    "data": self.free_times,
-                },
-                status=200,
-            )
+        with csm_metrics.APP_FREE_TIMES_DURATION.time():
+            try:
+                if is_retroactive_date(self.date):
+                    self._generate_organization_times()
+                    self.free_times = [
+                        {"time": i, "is_free": False} for i in self.times
+                    ]
+                    return Response(
+                        {
+                            "message": "All times has been received",
+                            "success": True,
+                            "data": self.free_times,
+                        },
+                        status=200,
+                    )
 
-        self._get_master_bookings()
-        self._generate_organization_times()
-        self._get_master_available_time()
-        self._generate_all_times()
+                self._get_master_bookings()
+                self._generate_organization_times()
+                self._get_master_available_time()
+                self._generate_all_times()
+            finally:
+                csm_metrics.APP_FREE_TIMES_REQUESTS.inc()
+
         return Response(
             {
                 "message": "All times has been received",

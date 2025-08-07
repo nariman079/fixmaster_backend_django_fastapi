@@ -61,8 +61,8 @@ class Order(models.Model):
     customer_notice = models.CharField(
         "Коментарий", max_length=120, null=True, blank=True
     )
-    payment_id = models.CharField(max_length=200, default=" ")
-    payment_link = models.CharField(max_length=500, default=" ")
+    payment_id = models.CharField(max_length=200, default=" ", null=True, blank=True)
+    payment_link = models.CharField(max_length=500, default=" ", null=True, blank=True)
     services = models.ManyToManyField(
         "src.Service",
     )

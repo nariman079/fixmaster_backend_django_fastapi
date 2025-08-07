@@ -27,9 +27,12 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "django_prometheus",
     *ROOT_APPS,
 ]
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "config.middlewares.RequestTimingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -37,6 +40,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -62,16 +66,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("POSTGRES_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT"),
     },
-}
-DATABASES["default"] = {
-    "ENGINE": "django.db.backends.sqlite3",
-    "NAME": BASE_DIR / "db.sqlite3",
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -101,7 +101,6 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-STATIC_DIRS = [os.path.join(BASE_DIR, "static")]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -118,6 +117,7 @@ REST_FRAMEWORK = {
     ],
 }
 DATE_INPUT_FORMATS = ["%m-%d-%Y"]
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "FixMaster API",
     "DESCRIPTION": "Compact booking of master",
@@ -127,39 +127,39 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
 }
-# LOGGING = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
-#     "formatters": {
-#         "main": {
-#             'format': '[%(asctime)s] %(levelname)s %(message)s',
-#             "datefmt": "%Y-%m-%d %H:%M:%S",
-#             "style": "%",
-#         },
-#     },
-#     "handlers": {
-#         "file": {
-#             "level": "INFO",
-#             "class": "logging.FileHandler",
-#             'filename': os.path.join(LOGGING_DIR, 'django.log'),
-#             "formatter": "main",
-#         },
-#     },
-#     "loggers": {
-#         "django": {
-#             "handlers": ["file"],
-#             "level": "INFO",
-#             "propagate": True,
-#         },
-#     },
-# }
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "main": {
+            "format": "[%(asctime)s] %(levelname)s %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+            "style": "%",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(LOGGING_DIR, "django.log"),
+            "formatter": "main",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
 
 import pickle
 
 import redis
 
 cache = redis.Redis(
-    host="localhost",
+    host="redis",
 )
 
 
@@ -172,7 +172,7 @@ def dict_get(name: str) -> dict:
         return pickle.loads(value)
 
 
-CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_BROKER_URL = "redis://redis:6379"
 CELERY_TIMEZONE = "Europe/Moscow"
 
 FIXMASTER_CLIENT_BOT_TOKEN = os.getenv("FIXMASTER_CLIENT_BOT_TOKEN")

@@ -163,7 +163,8 @@ class Customer(models.Model):
         "src.Master", on_delete=models.SET_NULL, null=True, blank=True
     )
     is_verified = models.BooleanField("Верифицированный клиент", default=False)
-
+    create_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
         return self.username or self.name
 

@@ -7,14 +7,17 @@ from datetime import datetime
 class BaseUser:
     telegram_id: int
 
+
 @dataclass
 class Service:
     title: str
 
-@dataclass 
+
+@dataclass
 class Client(BaseUser):
     name: str
     phone_number: str
+
 
 @dataclass
 class Master(BaseUser):
@@ -22,15 +25,18 @@ class Master(BaseUser):
     specialization: str
     access_code: str
 
+
 @dataclass
 class Organization(BaseUser):
     name: str
     phone_number: str
     url: str
 
+
 @dataclass
 class Moderator(BaseUser):
     pass
+
 
 @dataclass
 class Booking:
@@ -40,4 +46,3 @@ class Booking:
     address: str
     date: datetime.date
     time: datetime.time
-

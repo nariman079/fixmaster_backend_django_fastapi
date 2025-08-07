@@ -2,11 +2,10 @@ from typing import ClassVar
 from dataclasses import dataclass
 
 
-
 @dataclass(frozen=True)
 class ClientMessages:
     """Сообщения для клиентов"""
-    
+
     BOOKING_CONFIRMED: ClassVar[str] = (
         "✅ Ваша запись подтверждена!\n"
         "Мастер: {master_name}\n"
@@ -14,11 +13,9 @@ class ClientMessages:
         "Время: {time}\n"
         "Адрес: {address}"
     )
-    
+
     PAYMENT_SUCCESS: ClassVar[str] = (
-        "Оплата прошла успешно! 💰\n"
-        "Сумма: {amount} ₽\n"
-        "Ссылка на чек: {receipt_url}"
+        "Оплата прошла успешно! 💰\nСумма: {amount} ₽\nСсылка на чек: {receipt_url}"
     )
 
     REMINDER_24H: ClassVar[str] = (
@@ -26,9 +23,6 @@ class ClientMessages:
         "Мастер: {master_name}\n"
         "Время: {time}"
     )
-
-
-
 
 
 # Пример использования

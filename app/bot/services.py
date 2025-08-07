@@ -170,6 +170,7 @@ class BotOrganizationCreate:
         self._create_organization()
         self._send_notification()
         self._create_gallery()
+        self.organization["id"] = self.organization_obj.pk
         return Response(
             {
                 "message": "Вы успешно авторизовались\nВы будете получать уведомления о брони",
@@ -413,6 +414,7 @@ class MasterCreateSrv:
                 "message": "Мастер успешно создан",
                 "success": True,
                 "data": self.master.code,
+                "master_id": self.master.pk,
             },
             status=201,
         )
@@ -473,13 +475,18 @@ class MasterServiceCreateSrv:
             )
 
     def create_service(self):
-        self.master.service_set.create(**self.service_data)
+        self.service = self.master.service_set.create(**self.service_data)
 
     def execute(self):
         self.get_master()
         self.create_service()
         return Response(
-            {"message": "Запрос прошел успешно", "success": True, "data": {}},
+            {
+                "message": "Запрос прошел успешно",
+                "success": True,
+                "data": {},
+                "service_id": self.service.pk,
+            },
             status=201,
         )
 

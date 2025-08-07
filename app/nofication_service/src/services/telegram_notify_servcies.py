@@ -1,9 +1,19 @@
-
-
-from nofication_service.src.models import Booking, Client, Organization, Moderator, Master
-from nofication_service.src.messages.telegram import MasterMessages, ModeratorMessages, OrganizationMessages, ClientMessages
+from nofication_service.src.models import (
+    Booking,
+    Client,
+    Organization,
+    Moderator,
+    Master,
+)
+from nofication_service.src.messages.telegram import (
+    MasterMessages,
+    ModeratorMessages,
+    OrganizationMessages,
+    ClientMessages,
+)
 
 from nofication_service.src.interfaces import BotRepository
+
 
 class NewBookingNotifyService:
     def __init__(self, bot: BotRepository, booking: Booking):
@@ -26,7 +36,7 @@ class NewBookingNotifyService:
             client_phone=self.client_phone,
             date=self.date,
             time=self.time,
-            service=self.services
+            service=self.services,
         )
-        
+
         self.bot_repo.send(chat_id=self.master_id, text=message_text)

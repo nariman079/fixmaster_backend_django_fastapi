@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 5s
+
+rule_files:
+  - "alerts.yml"
+
+
+scrape_configs:
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['app:8000']
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
+    

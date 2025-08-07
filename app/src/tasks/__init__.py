@@ -6,6 +6,7 @@ from src.tasks.notification_tasks import (
     send_message_about_verify_customer,
 )
 from src.tasks.order_tasks import change_status_order
+from src.tasks.csm_metrics_tasks import update_metrics
 
 __all__ = (
     "send_message_telegram_on_master",
@@ -14,4 +15,5 @@ __all__ = (
     "send_message_about_verify_master",
     "send_message_about_verify_customer",
     "send_is_verified_organization",
+    "update_metrics",
 )

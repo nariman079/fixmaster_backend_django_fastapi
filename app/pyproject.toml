@@ -21,6 +21,7 @@ pillow = "^10.3.0"
 uvicorn = "^0.29.0"
 drf-spectacular-sidecar = "^2024.5.1"
 ruff = "^0.12.1"
+django-prometheus = "^2.4.1"
 
 
 [build-system]

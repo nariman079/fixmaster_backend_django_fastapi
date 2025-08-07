@@ -14,6 +14,7 @@ from src.models import (
     Customer,
     Moderator,
     Booking,
+    Order
 )
 
 
@@ -83,3 +84,10 @@ content_management_admin.register(OrganizationType)
 content_management_admin.register(Customer, CustomerAdmin)
 content_management_admin.register(Booking)
 content_management_admin.register(Image, ImageAdmin)
+
+
+
+class OrderModelAdmin(admin.ModelAdmin):
+    model = Order
+
+content_management_admin.register(Order, OrderModelAdmin)

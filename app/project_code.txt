@@ -1,5 +1,5 @@
 # File: ./manage.py
-#!/usr/bin/env python 
+#!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 
 import os
@@ -64,89 +64,6 @@ with open(output_file, 'w', encoding='utf-8') as outfile:
                         outfile.write(code + '\n\n')
                 except Exception as e:
                     print(f"Ошибка при чтении {file_path}: {e}")
-
-
-# File: ./Dockerfile
-FROM python:3.11
-ENV PYTHONUNBUFFERED=1
-RUN pip install poetry
-WORKDIR /app/
-COPY poetry.lock pyproject.toml /app/
-RUN poetry config virtualenvs.create false && poetry install
-COPY . /app/
-
-
-# File: ./docker-compose.yml
-version: '3'
-
-services:
-  # Redis
-  redis:
-    image: 'redis:alpine'
-    restart: always
-    command: redis-server
-    container_name: 'Redis'
-    volumes:
-      - redis:/data
-    network_mode: host
-  # Django
-  app:
-    build: .
-    restart: always
-    container_name: 'Backend'
-    command: /bin/bash -c "poetry run python manage.py collectstatic --noinput && poetry run python manage.py migrate && poetry run uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 4"
-    volumes:
-      - .:/app
-      - static:/app/static
-      - media:/app/media
-    env_file:
-      - .env
-    depends_on:
-      - redis
-    ports:
-      - 8000:8000
-    network_mode: host
-  # Celery
-  celery:
-    build: .
-    command:  celery -A config worker -l info
-    env_file:
-      - .env
-    depends_on:
-      - app
-      - redis
-    restart: always
-    volumes:
-      - static:/app/static
-      - media:/app/media
-    network_mode: host
-  # Nginx
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.template:/etc/nginx/conf.d/default.conf.template
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /home/www:/home/www
-      - static:/app/static
-      - media:/app/media
-    command: bash -c "envsubst '$${HOST}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
-    env_file:
-      - .env
-    environment:
-      - HOST=${HOST}
-    depends_on:
-      - app
-    network_mode: host
-
-volumes:
-  static:
-  media:
-  redis:
-
-
 
 
 # File: ./src/urls.py
@@ -486,6 +403,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.request import Request
 
+from config import csm_metrics 
+
 from src.serializers.order_serializers import OrderSerializer, BookingSerializer
 from src.services.order_services import OrderCreateSrv, FreeBookingSrv
 
@@ -506,7 +425,7 @@ class OrderCreateView(APIView):
                 serialzier_data=serializer.data,
             )
             return order_create_srv.execute()
-
+        csm_metrics.APP_HTTP_REQUESTS.inc()
         return Response(
             {
                 "message": "Bad error",
@@ -878,7 +797,7 @@ from src.tasks.notification_tasks import (
     send_message_about_verify_customer,
 )
 from src.tasks.order_tasks import change_status_order
-
+from src.tasks.csm_metrics_tasks import update_metrics
 __all__ = (
     "send_message_telegram_on_master",
     "change_status_order",
@@ -886,6 +805,8 @@ __all__ = (
     "send_message_about_verify_master",
     "send_message_about_verify_customer",
     "send_is_verified_organization",
+
+    "update_metrics"
 )
 
 
@@ -1042,6 +963,24 @@ def change_status_order(order_id: int, new_status: str):
     order = Order.objects.get(id=order_id)
     order.status = new_status
     order.save()
+
+
+# File: ./src/tasks/csm_metrics_tasks.py
+from celery import shared_task
+
+from src.models.order_models import Order
+from config.csm_metrics import APP_BOOKINGS_TOTAL
+
+
+@shared_task
+def update_metrics():
+    order_count = Order.objects.count()
+    print(order_count)
+    APP_BOOKINGS_TOTAL.set(order_count)
+
+
+
+
 
 
 # File: ./src/filters/__init__.py
@@ -2107,6 +2046,8 @@ from django.db.models import Sum
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from config import csm_metrics
+
 from src.tasks import send_message_telegram_on_master, change_status_order
 from src.models import Order, Booking, Service, Customer, Organization
 
@@ -2203,6 +2144,7 @@ class OrderCreateSrv:
         for i in self.service_ids:  # type: ignore
             self.order.services.add(i)
         self.order.save()
+        csm_metrics.APP_ORDER_CREATED.inc()
 
     def _create_booking(self):
         """Create booking"""
@@ -2257,15 +2199,22 @@ class OrderCreateSrv:
     @transaction.atomic
     def execute(self):
         """Run commands"""
-        self._validate_booking_master()
-        self._get_all_services()
-        self._complete_full_time_length()
+        with csm_metrics.APP_BOOKING_DURATION.time():
+            try:
+                self._validate_booking_master()
+                self._get_all_services()
+                self._complete_full_time_length()
 
-        self._create_order()
-        self._create_booking()
-        self._create_customer()
-        self._send_notification_on_master()
-        self._send_order_status_check()
+                self._create_order()
+                self._create_booking()
+                self._create_customer()
+
+                self._send_notification_on_master()
+                self._send_order_status_check()
+
+                csm_metrics.APP_BOOKINGS_CREATED.inc()
+            except Exception:
+                csm_metrics.APP_BOOKING_ERRORS.inc()
 
         return Response(
             {
@@ -2341,22 +2290,27 @@ class FreeBookingSrv:
         """
         Run commands
         """
-        if is_retroactive_date(self.date):
-            self._generate_organization_times()
-            self.free_times = [{"time": i, "is_free": False} for i in self.times]
-            return Response(
-                {
-                    "message": "All times has been received",
-                    "success": True,
-                    "data": self.free_times,
-                },
-                status=200,
-            )
-
-        self._get_master_bookings()
-        self._generate_organization_times()
-        self._get_master_available_time()
-        self._generate_all_times()
+        with csm_metrics.APP_FREE_TIMES_DURATION.time():
+            try:
+                if is_retroactive_date(self.date):
+                    self._generate_organization_times()
+                    self.free_times = [{"time": i, "is_free": False} for i in self.times]
+                    return Response(
+                        {
+                            "message": "All times has been received",
+                            "success": True,
+                            "data": self.free_times,
+                        },
+                        status=200,
+                    )
+                
+                self._get_master_bookings()
+                self._generate_organization_times()
+                self._get_master_available_time()
+                self._generate_all_times()
+            finally:
+                csm_metrics.APP_FREE_TIMES_REQUESTS.inc()
+            
         return Response(
             {
                 "message": "All times has been received",
@@ -2835,6 +2789,7 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
+    path('', include('django_prometheus.urls'), name='prometheus-django-metrics')
 ]
 
 if settings.DEBUG:
@@ -2866,6 +2821,99 @@ from config.celery import app as celery_app
 __all__ = ("celery_app",)
 
 
+# File: ./config/csm_metrics.py
+from prometheus_client import metrics
+
+APP_HTTP_REQUESTS = metrics.Counter(
+    'http_requests_total',
+    'HTTP запросы',
+    labelnames=['method', 'status', 'endpoint', 'api_source']
+)
+APP_ORGANIZATIONS_CREATED = metrics.Counter(
+    'organizations_created_total',
+    'Сколько организаций создано'
+)
+APP_ORGANIZATION_CREATION_DURATION = metrics.Histogram(
+    'organization_creation_duration_seconds',
+    'Время создания организации'
+)
+APP_CUSTOMERS_VERIFIED = metrics.Counter(
+    'customers_verified_total',
+    'Сколько клиентов прошли верификацию'
+)
+APP_CUSTOMER_VERIFY_FAILURES = metrics.Counter(
+    'customer_verify_failures_total',
+    'Ошибки верификации (неправильный номер и т.д.)'
+)
+APP_ORDER_CREATED = metrics.Counter(
+    'order_created_total',
+    "Общее количество заказов"
+)
+APP_ORDER_DURATION = metrics.Histogram(
+    'order_creation_duration_seconds',
+    "Врема создания заказа"
+)
+APP_BOOKINGS_TOTAL = metrics.Gauge(
+    'bookings_total',
+    'Сколько бронирований сейчас в базе данных (состояние)'
+)
+APP_BOOKINGS_CREATED = metrics.Counter(
+    'bookings_created_total',
+    'Общее количество бронирований'
+)
+APP_BOOKING_DURATION = metrics.Histogram(
+    'booking_creation_duration_seconds',
+    'Время создания бронирования'
+)
+APP_BOOKING_ERRORS = metrics.Counter(
+    'booking_errors_total',
+    'Ошибки при бронировании (нет времени, мастер не найден)'
+)
+APP_API_KEY_VALID = metrics.Counter(
+    'api_key_valid_total',
+    'Количество валидных API-ключей'
+)
+APP_API_KEY_INVALID = metrics.Counter(
+    'api_key_invalid_total',
+    'Количество невалидных API-ключей'
+)
+APP_FREE_TIMES_REQUESTS = metrics.Counter(
+    'free_times_requests_total',
+    'Сколько раз запрашивали свободное время'
+)
+
+APP_FREE_TIMES_DURATION = metrics.Histogram(
+    'free_times_duration_seconds',
+    'Время подбора свободного времени'
+)
+
+APP_MASTERS_VERIFIED = metrics.Counter(
+    'masters_verified_total',
+    'Сколько мастеров прошли верификацию'
+)
+
+APP_MASTER_VERIFY_FAILURES = metrics.Counter(
+    'master_verify_failures_total',
+    'Ошибки верификации мастеров'
+)
+
+APP_CELERY_TASKS_STARTED = metrics.Counter(
+    'celery_tasks_started_total',
+    'Задачи Celery: запущены'
+)
+
+APP_CELERY_TASKS_SUCCEEDED = metrics.Counter(
+    'celery_tasks_succeeded_total',
+    'Задачи Celery: успешны'
+)
+
+APP_CELERY_TASKS_FAILED = metrics.Counter(
+    'celery_tasks_failed_total',
+    'Задачи Celery: упали'
+)
+
+
+
 # File: ./config/celery.py
 """
 Celery in project
@@ -2874,6 +2922,7 @@ Celery in project
 import os
 from celery import Celery
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
@@ -2883,6 +2932,13 @@ app = Celery("django_app")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
+
+app.conf.beat_schedule = {
+    'update-bookings-gauge': {
+        'task': 'src.tasks.csm_metrics_tasks.update_metrics',  # путь к твоей задаче
+        'schedule': 10.0,  # каждые 10 секунд
+    },
+}
 
 # File: ./config/settings.py
 import os
@@ -2914,9 +2970,11 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "django_prometheus",
     *ROOT_APPS,
 ]
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -2924,6 +2982,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
+
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -3005,6 +3065,7 @@ REST_FRAMEWORK = {
     ],
 }
 DATE_INPUT_FORMATS = ["%m-%d-%Y"]
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "FixMaster API",
     "DESCRIPTION": "Compact booking of master",
@@ -3014,39 +3075,39 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
 }
-# LOGGING = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
-#     "formatters": {
-#         "main": {
-#             'format': '[%(asctime)s] %(levelname)s %(message)s',
-#             "datefmt": "%Y-%m-%d %H:%M:%S",
-#             "style": "%",
-#         },
-#     },
-#     "handlers": {
-#         "file": {
-#             "level": "INFO",
-#             "class": "logging.FileHandler",
-#             'filename': os.path.join(LOGGING_DIR, 'django.log'),
-#             "formatter": "main",
-#         },
-#     },
-#     "loggers": {
-#         "django": {
-#             "handlers": ["file"],
-#             "level": "INFO",
-#             "propagate": True,
-#         },
-#     },
-# }
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "main": {
+            'format': '[%(asctime)s] %(levelname)s %(message)s',
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+            "style": "%",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            'filename': os.path.join(LOGGING_DIR, 'django.log'),
+            "formatter": "main",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
 
 import pickle
 
 import redis
 
 cache = redis.Redis(
-    host="localhost",
+    host="redis",
 )
 
 
@@ -3059,13 +3120,14 @@ def dict_get(name: str) -> dict:
         return pickle.loads(value)
 
 
-CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_BROKER_URL = "redis://redis:6379"
 CELERY_TIMEZONE = "Europe/Moscow"
 
 FIXMASTER_CLIENT_BOT_TOKEN = os.getenv("FIXMASTER_CLIENT_BOT_TOKEN")
 FIXMASTER_MASTER_BOT_TOKEN = os.getenv("FIXMASTER_MASTER_BOT_TOKEN")
 FIXMASTER_MODERATOR_BOT_TOKEN = os.getenv("FIXMASTER_MODERATOR_BOT_TOKEN")
 FIXMASTER_ORGANIZATION_BOT_TOKEN = os.getenv("FIXMASTER_ORGANIZATION_BOT_TOKEN")
+
 
 
 # File: ./config/wsgi.py
@@ -3142,10 +3204,6 @@ urlpatterns = [
     path("customer/<str:telegram_id>/last-booking/", CustomerNextSessionView.as_view()),
     path("customer/check/", CheckCustomerView.as_view()),
 ]
-
-
-# File: ./bot/webhook_view.py
-
 
 
 # File: ./bot/serializers.py
@@ -3944,6 +4002,7 @@ class BotOrganizationCreate:
         self._create_organization()
         self._send_notification()
         self._create_gallery()
+        self.organization['id'] = self.organization_obj.pk
         return Response(
             {
                 "message": "Вы успешно авторизовались\nВы будете получать уведомления о брони",
@@ -4187,6 +4246,7 @@ class MasterCreateSrv:
                 "message": "Мастер успешно создан",
                 "success": True,
                 "data": self.master.code,
+                "master_id": self.master.pk
             },
             status=201,
         )
@@ -4247,14 +4307,20 @@ class MasterServiceCreateSrv:
             )
 
     def create_service(self):
-        self.master.service_set.create(**self.service_data)
+        self.service = self.master.service_set.create(**self.service_data)
 
     def execute(self):
         self.get_master()
         self.create_service()
         return Response(
-            {"message": "Запрос прошел успешно", "success": True, "data": {}},
+            {
+                "message": "Запрос прошел успешно", 
+                "success": True, 
+                "data": {},
+                "service_id":self.service.pk
+            },
             status=201,
+
         )
 
 
@@ -4566,7 +4632,364 @@ class CheckCustomerSrv:
             return Response(status=404)
 
 
-# File: ./nginx/default.template
+# File: ./nofication_service/main.py
+# Запуск консюмера
+
+# File: ./nofication_service/__init__.py
+
+
+# File: ./nofication_service/config.py
+import os
+
+
+from dotenv import load_dotenv
+
+load_dotenv("notigy.env")
+
+RABBIT_MQ_CONNECTION_URL = os.getenv("RABBIT_MQ_CONNECTION_URL")
+RABBIT_MQ_CHANNEL_NAME = os.getenv("RABBIT_MQ_CHANNEL_NAME")
+
+CLIENT_BOT_TOKEN=os.getenv("CLIENT_BOT_TOKEN")
+MASTER_BOT_TOKEN=os.getenv("MASTER_BOT_TOKEN")
+ORGANIZATION_BOT_TOKEN=os.getenv("ORGANIZATION_BOT_TOKEN")
+MODERATOR_BOT_TOKEN=os.getenv("MODERATOR_BOT_TOKEN")
+
+MONGO_DB_CONNECTION_URL = os.getenv("MONGO_DB_CONNECTION_URL")
+
+
+
+# File: ./nofication_service/src/models.py
+from dataclasses import dataclass
+
+from datetime import datetime
+
+
+@dataclass
+class BaseUser:
+    telegram_id: int
+
+@dataclass
+class Service:
+    title: str
+
+@dataclass 
+class Client(BaseUser):
+    name: str
+    phone_number: str
+
+@dataclass
+class Master(BaseUser):
+    name: str
+    specialization: str
+    access_code: str
+
+@dataclass
+class Organization(BaseUser):
+    name: str
+    phone_number: str
+    url: str
+
+@dataclass
+class Moderator(BaseUser):
+    pass
+
+@dataclass
+class Booking:
+    client: Client
+    master: Master
+    services: list[Service]
+    address: str
+    date: datetime.date
+    time: datetime.time
+
+
+
+# File: ./nofication_service/src/__init__.py
+
+
+# File: ./nofication_service/src/interfaces.py
+from abc import abstractmethod, ABC
+
+class BotRepository(ABC):
+    @abstractmethod
+    async def send(self, chat_id: int, text: str, reply_markup = None ) -> None:
+        pass
+
+# File: ./nofication_service/src/repository/telegram_bots.py
+from aiogram import types as aiotypes
+from telebot import types as teletypes
+
+
+from telebot import TeleBot
+from aiogram import Bot
+
+from nofication_service.src.interfaces import BotRepository
+
+
+
+class TeleBotRepository(BotRepository):
+    def __init__(self, token: str):
+        self.token = token
+        self.bot = TeleBot(self.token)
+
+    async def send(
+        self, 
+        chat_id: int, 
+        text: str, 
+        reply_murkup:  teletypes.ReplyKeyboardMarkup | teletypes.InlineKeyboardButton | None = None
+    ) -> None:
+        """Отравка сообщения к tguser через telebot"""
+        self.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_murkup)
+
+class AiogramBotRepository(BotRepository):
+    def __init__(self, token: str):
+        self.token = token
+        self.bot = Bot(token=self.token)
+
+    async def send(
+        self, 
+        chat_id: int, 
+        text: str, 
+        reply_markup: aiotypes.ReplyKeyboardMarkup | aiotypes.InlineKeyboardMarkup | None = None
+    ) -> None:
+        """Отравка сообщения к tguser через aiogram"""
+        await self.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+    
+
+
+# File: ./nofication_service/src/services/telegram_notify_servcies.py
+
+
+from nofication_service.src.models import Booking, Client, Organization, Moderator, Master
+from nofication_service.src.messages.telegram import MasterMessages, ModeratorMessages, OrganizationMessages, ClientMessages
+
+from nofication_service.src.interfaces import BotRepository
+
+class NewBookingNotifyService:
+    def __init__(self, bot: BotRepository, booking: Booking):
+        self.bot_repo = bot
+        self.master_id = booking.master.telegram_id
+        self.client_name = booking.client.name
+        self.client_phone = booking.client.phone_number
+        self.services = booking.services
+        self.time = booking.time
+        self.date = booking.date
+
+    def _parse_services(self) -> None:
+        self.services = "\n".join([service.title for service in self.services])
+
+    def execute(self) -> None:
+        self._parse_services()
+
+        message_text = MasterMessages.NEW_BOOKING.format(
+            client_name=self.client_name,
+            client_phone=self.client_phone,
+            date=self.date,
+            time=self.time,
+            service=self.services
+        )
+        
+        self.bot_repo.send(chat_id=self.master_id, text=message_text)
+
+
+# File: ./nofication_service/src/messages/telegram/moderatior.py
+from typing import ClassVar
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class ModeratorMessages:
+    """Сообщения для модераторов"""
+    
+    NEW_VERIFICATION_REQUEST: ClassVar[str] = (
+        "🔔 Новая заявка на верификацию\n"
+        "Организация: {org_name}\n"
+        "Телефон: {phone}\n"
+        "Просмотреть: {admin_link}"
+    )
+    
+    REPORT_READY: ClassVar[str] = (
+        "📊 Отчет за неделю готов\n"
+        "Новых организаций: {new_orgs}\n"
+        "Жалоб: {complaints}\n"
+        "Проблемных броней: {issues}"
+    )
+
+# File: ./nofication_service/src/messages/telegram/__init__.py
+from .client import ClientMessages
+from .master import MasterMessages
+from .moderatior import ModeratorMessages
+from .organization import OrganizationMessages
+
+__all__ = (ClientMessages, MasterMessages, ModeratorMessages, OrganizationMessages)
+
+# File: ./nofication_service/src/messages/telegram/organization.py
+from typing import ClassVar
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class OrganizationMessages:
+    """Сообщения для организаций"""
+    
+    VERIFICATION_SUCCESS: ClassVar[str] = (
+        "🎉 Ваша организация верифицирована!\n"
+        "Теперь вы можете:\n"
+        "- Добавлять мастеров\n"
+        "- Настраивать услуги\n"
+        "- Принимать записи"
+    )
+    
+    NEW_MASTER_JOINED: ClassVar[str] = (
+        "👋 Новый мастер в команде!\n"
+        "Имя: {master_name}\n"
+        "Специализация: {specialization}\n"
+        "Код для мастера: {access_code}"
+    )
+    
+
+
+# File: ./nofication_service/src/messages/telegram/client.py
+from typing import ClassVar
+from dataclasses import dataclass
+
+
+
+@dataclass(frozen=True)
+class ClientMessages:
+    """Сообщения для клиентов"""
+    
+    BOOKING_CONFIRMED: ClassVar[str] = (
+        "✅ Ваша запись подтверждена!\n"
+        "Мастер: {master_name}\n"
+        "Дата: {date}\n"
+        "Время: {time}\n"
+        "Адрес: {address}"
+    )
+    
+    PAYMENT_SUCCESS: ClassVar[str] = (
+        "Оплата прошла успешно! 💰\n"
+        "Сумма: {amount} ₽\n"
+        "Ссылка на чек: {receipt_url}"
+    )
+
+    REMINDER_24H: ClassVar[str] = (
+        "⏰ Напоминание: через 24 часа у вас запись\n"
+        "Мастер: {master_name}\n"
+        "Время: {time}"
+    )
+
+
+
+
+
+# Пример использования
+
+
+# File: ./nofication_service/src/messages/telegram/master.py
+from typing import  ClassVar
+from dataclasses import dataclass
+
+
+
+@dataclass(frozen=True)
+class MasterMessages:
+    """Сообщения для мастеров"""
+    
+    NEW_BOOKING: ClassVar[str] = (
+        "🆕 Новая запись!\n"
+        "Клиент: {client_name}\n"
+        "Телефон: {client_phone}\n"
+        "Дата: {date}\n"
+        "Время: {time}\n"
+        "Услуга: {service}"
+    )
+    
+    SCHEDULE_CHANGE: ClassVar[str] = (
+        "⚠️ Изменение расписания!\n"
+        "Новое время работы: {schedule} \n"
+        "Обновите свои доступные слоты"
+    )
+
+
+
+# File: ./nofication_service/tests/conftest.py
+
+
+# File: ./nofication_service/tests/__init__.py
+
+
+# File: ./nofication_service/tests/notify_test.py
+import pytest
+
+import datetime
+from nofication_service.src.interfaces import BotRepository
+from nofication_service.src.services.telegram_notify_servcies import NewBookingNotifyService
+from nofication_service.src.models import Booking, Client, Master, Service
+
+class TestBot(BotRepository):
+    def send(self, chat_id, text, reply_markup = None):
+        return text
+    
+@pytest.mark.asyncio
+async def test_new_booking_notify_service():
+    bot = TestBot()
+    
+    booking = Booking(
+        client=Client(
+            1, "nariman", "89232"
+        ),
+        master=Master(
+            2, "name", "se","23d"
+        ),
+        services=[Service("test")],
+        address="Test",
+        date=datetime.datetime(year=2025,day=21, month=1),
+        time=datetime.datetime(year=2025,day=21, month=1)
+    )
+    new_booking = NewBookingNotifyService(
+        bot,
+        booking
+    )
+    new_booking.execute()
+
+
+# File: ./nginx/develop.conf
+upstream backend {
+    server app:8000;
+}
+upstream frontend {
+    server localhost:3030;
+}
+server {
+    listen 80;
+    server_name backend.localhost;
+
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+
+
+        location /api/ {
+            proxy_pass http://backend/api/;
+        }
+        location /bot-api/ {
+            proxy_pass http://backend/bot-api/;
+        }
+        location /admin/ {
+            proxy_pass http://backend/admin/;
+        }
+    }
+
+    location /static/ {
+        alias /app/static/;
+    }
+    location /media/ {
+        alias /app/media/;
+    }
+}
+
+# File: ./nginx/production.conf
 upstream backend {
     server localhost:8000;
 }
@@ -4574,17 +4997,10 @@ upstream frontend {
     server localhost:3030;
 }
 server {
-    listen 443 ssl;
-    server_name ${HOST};
-    client_max_body_size 10M;
-    ssl_certificate /etc/letsencrypt/live/${HOST}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${HOST}/privkey.pem;
+    listen 80;
+    server_name backend.localhost;
 
-    root /home/www;
-    location = /favicon.ico {
-        alias /home/www/favicon.ico;
-    }
-     location / {
+    location / {
         index index.html;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -4603,7 +5019,6 @@ server {
         }
     }
 
-
     location /static/ {
         alias /app/static/;
     }
@@ -4611,2167 +5026,4 @@ server {
         alias /app/media/;
     }
 }
-
-
-
-# File: ./customer_main.py
-from telebot.types import Message
-from telebot import TeleBot
-
-from config.settings import CLIENT_BOT_TOKEN
-from customer_bot.services import CustomerLastBookingSrv, CustomerAuthorizationSrv
-
-bot = TeleBot(CLIENT_BOT_TOKEN)
-
-
-@bot.message_handler(commands=['start'])
-def start_bot(message: Message) -> None:
-    CustomerAuthorizationSrv(
-        bot=bot,
-        message=message
-    )
-
-
-@bot.message_handler(content_types=['text'])
-def menu_buttons_bot(message: Message) -> None:
-    if message.text == 'Следующая бронь':
-        CustomerLastBookingSrv(
-            bot=bot,
-            message=message
-        ).execute()
-
-
-if __name__ == '__main__':
-    bot.polling(none_stop=True)
-
-
-# File: ./moderator_main.py
-"""
-Main file
-"""
-from telebot import TeleBot, types
-
-from config import settings
-from moderator_bot.src.services import ModeratorCreate, VerifiedOrganization
-
-
-bot = TeleBot(settings.MODERATOR_BOT_TOKEN)  # type: ignore
-
-
-@bot.message_handler(commands=['start'])
-def main(message: types.Message):
-    """
-    Сообщение при запуске бота
-    """
-    bot.send_message(chat_id=message.chat.id,
-                     text="Добро пожаловать а FixMaster для модераторов")
-    ModeratorCreate(bot, message)
-
-@bot.message_handler(commands=['test-call'])
-def send_callback(message: types.Message):
-    bot.send_message(
-        chat_id=message.chat.id,
-        text="text",
-        reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Test', callback_data=f'organization_verify_{message.id}_false_43'))
-    )
-
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback_query(call: types.CallbackQuery):
-    data: str = call.data
-    
-
-    if 'organization_verify_true' in data:
-        organization_id = int(data.split('_')[-1])
-        VerifiedOrganization(organization_id).verify_organization(True)
-        verify_text = '\nВерифицирован ✅'
-    elif 'organization_verify_false' in data:
-        organization_id = int(data.split('_')[-1])
-        VerifiedOrganization(organization_id).verify_organization(False)
-        verify_text = '\nНе верифицирован ❌'
-    else:
-        verify_text = 'Не верифицирован ❌'
-
-    bot.edit_message_text(
-        chat_id=call.message.chat.id, 
-        message_id=call.message.id,
-        text=call.message.text + verify_text,
-        )
-
-
-if __name__ == '__main__':
-    bot.polling(none_stop=True)
-
-# File: ./tests.py
-import os
-
-project_dir = '.'  # Корень проекта
-output_file = 'project_code.txt'
-exclude_dirs = {'.venv','venv', '__pycache__', '.git', '.idea', '.mypy_cache', '.pytest_cache'}
-
-extra_files = {'Dockerfile', 'docker-compose.yml', 'docker-compose.yaml'}
-nginx_dirs = {'nginx'}
-nginx_extensions = {'.conf'}
-
-def should_include_file(file_path, file_name):
-    if file_name.endswith('.py') and not file_name.endswith('.pyc'):
-        return True
-    if file_name in extra_files:
-        return True
-    if any(file_name.endswith(ext) for ext in nginx_extensions):
-        return True
-    if 'nginx' in file_path.split(os.sep):  # если файл внутри папки nginx
-        return True
-    return False
-
-with open(output_file, 'w', encoding='utf-8') as outfile:
-    for root, dirs, files in os.walk(project_dir):
-        # Исключаем ненужные директории
-        dirs[:] = [d for d in dirs if d not in exclude_dirs]
-
-        for file in files:
-            file_path = os.path.join(root, file)
-            if should_include_file(file_path, file):
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        code = f.read()
-                        outfile.write(f'# File: {file_path}\n')
-                        outfile.write(code + '\n\n')
-                except Exception as e:
-                    print(f"Ошибка при чтении {file_path}: {e}")
-
-
-# File: ./master_main.py
-"""
-Главный файл для запуска бота для матеров
-"""
-
-from telebot import TeleBot
-from telebot.types import Message
-
-from config.settings import MASTER_BOT_TOKEN
-from master_bot.services import MasterVerifySrv, MasterCustomerSrv, MasterNextSessionSrv
-
-bot = TeleBot(MASTER_BOT_TOKEN)
-
-
-@bot.message_handler(commands=['start'])
-def start_bot(message: Message) -> None:
-    """ Логика при запуске бота """
-    MasterVerifySrv(
-        bot=bot,
-        message=message
-    )
-
-@bot.message_handler(content_types=['text'])
-def menu_button_handler(message: Message):
-    text = message.text
-    if message.text == 'Список мох клиентов':
-        MasterCustomerSrv(
-            bot=bot,
-            message=message
-        ).execute()
-    elif message.text == 'Следующая бронь':
-        MasterNextSessionSrv(
-            bot=bot,
-            message=message
-        ).execute()
-
-if __name__ == "__main__":
-    bot.polling(none_stop=True)
-
-
-# File: ./client_main.py
-"""
-Main file
-"""
-import logging
-from telebot import TeleBot, types
-
-from config import settings
-from organization_bot.src.services import GetProfileTelebot
-
-bot = TeleBot(settings.TELEGRAM_BOT_TOKEN)  # type: ignore
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-handler = logging.FileHandler('bot.log')
-handler.setLevel(logging.DEBUG)
-
-
-@bot.message_handler(commands=['start'])
-def main(message: types.Message):
-    """
-    Сообщение при запуске бота
-    """
-    bot.send_message(chat_id=message.chat.id,
-                     text="Введите номер телефона, на которую оформили бронь")
-    GetProfileTelebot(bot, message)
-
-
-@bot.message_handler(commands=['my_chat_id'])
-def my_chat_id(message: types.Message):
-    print(message.chat.id)
-    bot.send_message(chat_id=message.chat.id,
-                     text=f"{message.chat.id}")
-
-
-if __name__ == '__main__':
-    bot.polling(none_stop=True)
-
-
-# File: ./Dockerfile
-FROM python:3.11
-
-ENV PYTHONUNBUFFERED=1
-WORKDIR /bot/
-COPY req.txt /bot/
-RUN pip install -r req.txt
-COPY . /bot/
-
-
-# File: ./docker-compose.yml
-version: '3'
-
-services:
-  organization_app:
-    build: .
-    restart: unless-stopped
-    command: /bin/bash -c "python /bot/organization_main.py"
-    network_mode: 'host'
-    volumes:
-      - ./:/bot/
-
-  moderator_app:
-    build: .
-    restart: unless-stopped
-    command: /bin/bash -c "python /bot/moderator_main.py"
-    network_mode: 'host'
-    volumes:
-      - ./:/bot/
-
-  master_app:
-    build: .
-    restart: unless-stopped
-    command: /bin/bash -c "python /bot/master_main.py"
-    network_mode: 'host'
-    volumes:
-      - ./:/bot/
-
-  customer_app:
-    build: .
-    restart: unless-stopped
-    command: /bin/bash -c "python /bot/customer_main.py"
-    network_mode: 'host'
-    volumes:
-      - ./:/bot/
-
-# File: ./organization_main.py
-"""
-Main file
-"""
-import os
-import uuid
-
-from telebot import TeleBot, types
-
-from config import settings, cache
-from config.settings import bucket_name, s3
-from organization_bot.src.services import OrganizationCreate, MasterListSrv, MasterDetailSrv, \
-    MasterDeleteSrv, MasterCreateSrv, MasterEditSrv, MasterServiceListSrv, MasterServiceListSrv, \
-    MasterServiceDetailSrv, MasterServiceEditSrv, MasterServiceCreateSrv, MasterServiceDeleteSrv
-
-bot = TeleBot(settings.ORGANIZATION_BOT_TOKEN)  # type: ignore
-
-
-@bot.message_handler(commands=['start'])
-def main(message: types.Message):
-    """
-    Сообщение при запуске бота
-    """
-    bot.send_message(chat_id=message.chat.id,
-                     text="Добро пожаловать а FixMaster для организаций",
-                     )
-    OrganizationCreate(bot, message)
-
-
-@bot.message_handler(content_types=['text'])
-def get_organization_data_content(message: types.Message):
-    if message.text == '📃 Список мастеров':
-        MasterListSrv(bot=bot, message=message).execute()
-    elif message.text == '👥 Список клиентов':
-        pass
-    elif message.text == "➕ Добавить мастера":
-        MasterCreateSrv(bot=bot,
-                        message=message)
-    else:
-        pass
-        # ClientListSrv(bot=bot, message=message).execute()
-    # elif message.text == :
-    #     ServicesListSrv(bot=bot, message=message).execute()
-
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback_query(call: types.CallbackQuery):
-    data = call.data
-    print(data)
-    if 'masterlist' in data:
-        MasterListSrv(
-            bot=bot,
-            message=call.message,
-            call=True
-        ).execute()
-    elif 'masterdetail' in data:
-        master_id = data.split('_')[-1]
-        MasterDetailSrv(bot=bot,
-                        master_id=int(master_id),
-                        call=call,
-                        ).execute()
-    elif 'masterdelete' in data:
-        master_id = data.split('_')[-1]
-        MasterDeleteSrv(bot=bot,
-                        master_id=int(master_id),
-                        call=call,
-                        ).execute()
-    elif 'mastercrete' in data:
-        MasterCreateSrv(bot=bot,
-                        message=call.message)
-    elif 'masteredit' in data:
-        master_id = data.split('_')[-1]
-
-        MasterEditSrv(
-            bot=bot,
-            message=call.message,
-            master_id=int(master_id)
-        )
-    elif 'masterservices_list' in data:
-        master_id = data.split('_')[-1]
-        MasterServiceListSrv(
-            bot=bot,
-            message=call.message,
-            master_id=int(master_id)
-        ).execute()
-    elif 'masterservice_detail' in data:
-        service_id = data.split('_')[-1]
-        print(service_id)
-        MasterServiceDetailSrv(
-            bot=bot,
-            message=call.message,
-            service_id=int(service_id)
-        ).execute()
-    elif 'masterservice_delete' in data:
-        service_id = data.split('_')[-1]
-        MasterServiceDeleteSrv(
-            bot=bot,
-            message=call.message,
-            service_id=int(service_id)
-        ).execute()
-
-    elif 'masterservice_create' in data:
-        master_id = data.split('_')[-1]
-        MasterServiceCreateSrv(
-            bot=bot,
-            message=call.message,
-            master_id=int(master_id)
-        )
-        ...
-    elif 'mastereservice_edit' in data:
-        service_id = data.split('_')[-1]
-        MasterServiceEditSrv(
-            bot=bot,
-            message=call.message,
-            service_id=int(service_id)
-        )
-
-
-@bot.message_handler(content_types=['photo'])
-def photo(message: types.Message) -> None:
-    file_id = message.photo[-1].file_id
-    file_info = bot.get_file(file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-
-    path = f'photos/{message.from_user.username}/'
-    if not os.path.isdir(path):
-        os.mkdir(path)
-
-    file_path = os.path.join(path, f"{str(uuid.uuid4())}.jpg")
-    with open(file_path, 'wb') as file:
-        file.write(downloaded_file)
-
-    s3.upload_file(
-        Filename=file_path,
-        Bucket=bucket_name,
-        Key=file_path
-    )
-
-    url = f"https://s3.timeweb.cloud/dea7d49e-ba387d71-db58-4c7f-8b19-e217f5775615/{file_path}"
-    print(url)
-
-
-if __name__ == '__main__':
-    bot.polling(none_stop=True)
-
-
-# File: ./master_bot/__init__.py
-
-
-# File: ./master_bot/buttons.py
-from telebot import types
-
-
-def get_menu_buttons() -> types.ReplyKeyboardMarkup:
-    menu_buttons = types.ReplyKeyboardMarkup()
-    next_session = types.KeyboardButton('Следующая бронь')
-    all_clients = types.KeyboardButton('Список мох клиентов')
-
-    menu_buttons.row(next_session, all_clients)
-    return menu_buttons
-
-
-# File: ./master_bot/services.py
-from telebot import TeleBot
-from telebot.types import Message
-
-from fixmaster_backend.client import FixMasterClient
-from master_bot.buttons import get_menu_buttons
-
-fix_master_client = FixMasterClient(
-    api_key='test'
-)
-
-
-class MasterVerifySrv:
-
-    def __init__(
-            self,
-            bot: TeleBot,
-            message: Message
-    ):
-        self.bot = bot
-        self.message = message
-        self.telegram_id = message.chat.id
-        self.start()
-
-    def start(self) -> None:
-        """
-        Начало работы
-        """
-        self.bot.send_message(
-            chat_id=self.telegram_id,
-            text="Введеите код для авторизации."
-        )
-        self.bot.register_next_step_handler(self.message, self.check_code)
-
-    def check_code(self, message: Message) -> None:
-        """
-        Проверка кода авторизации
-        """
-
-        self.code = message.text
-
-        response = fix_master_client.master_verify(
-            master_data={
-                'code': self.code,
-                'telegram_id': self.telegram_id
-            }
-        )
-
-        if response.status_code == 200:
-            self.bot.send_message(
-                chat_id=self.telegram_id,
-                text="Вы успешно авторизовались",
-                reply_markup=get_menu_buttons()
-            )
-        elif response.status_code == 400:
-            self.bot.send_message(
-                chat_id=self.telegram_id,
-                text=f"Вы неправильно ввели код.\n{response.json()['message']}",
-            )
-            self.bot.register_next_step_handler(message, self.check_code)
-        else:
-            print(response.text)
-            self.bot.send_message(
-                text=f"Неизвестная ошибка \n{response.status_code}\nПопробуйте еще раз или обратитесь к администратору",
-                chat_id=self.telegram_id
-            )
-            self.bot.register_next_step_handler(message, self.check_code)
-
-
-class MasterCustomerSrv:
-    def __init__(
-            self,
-            bot: TeleBot,
-            message: Message
-    ):
-        self.bot = bot
-        self.message = message
-        self.telegram_id = message.chat.id
-
-    def get_master_customers(self) -> None:
-        """ Получение списка клиентов мастера """
-        response = fix_master_client.master_clients(self.telegram_id)
-
-        if response.status_code == 200:
-            self.customers = response.json()['data']
-        else:
-            self.customers = []
-
-    def generate_customer_list_message(self) -> None:
-        """ Генерация сообщения """
-        self.message_obj = "Список клиентов:\n"
-
-        for customer in self.customers:
-            self.message_obj += f'@{customer.get("username")}\n'
-
-    def send_customer_list_on_master(self) -> None:
-        """ Отправка сообщения """
-        self.bot.send_message(
-            chat_id=self.telegram_id,
-            text=self.message_obj
-        )
-
-    def execute(self) -> None:
-        """ Выполнение всех команд """
-        self.get_master_customers()
-        self.generate_customer_list_message()
-        self.send_customer_list_on_master()
-
-
-class MasterNextSessionSrv:
-    def __init__(
-            self,
-            bot: TeleBot,
-            message: Message
-    ):
-        self.bot = bot
-        self.message = message
-        self.telegram_id = message.chat.id
-
-    def get_last_booking(self) -> None:
-        """ Получение данных о следующем броне """
-        response = fix_master_client.master_last_booking(self.telegram_id)
-
-        if response.status_code == 200:
-            print(response.json())
-            self.message_obj = response.json()['message']
-        else:
-            self.message_obj = "Неизвестная ошибка"
-
-    def send_customer_list_on_master(self) -> None:
-        """ Отправка сообщения """
-        self.bot.send_message(
-            chat_id=self.telegram_id,
-            text=self.message_obj
-        )
-
-    def execute(self) -> None:
-        """ Выполнение всех команд """
-        self.get_last_booking()
-        self.send_customer_list_on_master()
-
-
-# File: ./fixmaster_backend/__init__.py
-from fixmaster_backend.client import  FixMasterClient
-
-__all__ = (
-    'FixMasterClient'
-)
-
-# File: ./fixmaster_backend/client.py
-from requests import get, post, delete, Response, put, patch
-
-
-class FixMasterClient:
-    BASE_URL = ['https://booking.fix-mst.ru/bot-api', 'http://localhost:8000/bot-api'][0]
-    CREATE_ORGANIZATION_URL = BASE_URL + '/organization/create/'
-    ORGANIZATION_TYPES_URL = 'https://booking.fix-mst.ru/api/organizations-types/'
-    VERIFY_ORGANIZATION_URL = BASE_URL + '/organization/verify/'
-    DELETE_MASTER_URL = BASE_URL + '/masters/'
-    CREATE_MASTER_URL = BASE_URL + '/masters/'
-    EDIT_MASTER_URL = BASE_URL + '/masters/'
-
-    MASTER_VERIFY_URL = BASE_URL + '/master/verify/'
-    MASTER_CUSTOMERS_URL = BASE_URL + '/master/{}/customers/'
-    MASTER_SERVICES_URL = BASE_URL + '/masters/{}/services/'
-    MASTER_LAST_BOOKING_URL = BASE_URL + '/master/{}/last-booking/'
-
-    CUSTOMER_LAST_BOOKING_URL = BASE_URL + '/customer/{}/last-booking/'
-    CUSTOMER_VERIFY_URL = BASE_URL + '/customer/verify/'
-    CUSTOMER_CHECK_URL = BASE_URL + '/customer/check/'
-    SERVICE_DETAIL_URL = BASE_URL + '/service/'
-
-    GET_ORGANIZATION_BY_TELEGRAM_ID_URL = BASE_URL + '/organization/get-by-telegram_id/'
-    GET_ORGANIZATION_DATA_BY_TELEGRAM_ID_URL = BASE_URL + '/organization-data/get-by-telegram_id/'
-    GET_ACCOUNT_URL = BASE_URL + '/get-my-profile/'
-    GET_MODERATOR_URL = BASE_URL + '/moderator/'
-
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        print(api_key)
-        self.headers = {
-            'Content-Type': 'application/json',
-            'Api-Key': api_key
-        }
-
-    def _post(self, request_url: str, body: dict):
-        """
-        Custom POST method
-        """
-        return post(
-            request_url,
-            headers=self.headers,
-            data=body,
-        )
-
-    def _get(self, request_url: str, *args, **kwargs):
-        """
-        Custom POST method
-        """
-
-        return get(
-            request_url,
-            headers=self.headers,
-            params=kwargs
-        )
-
-    def get_profile(self, **kwargs) -> dict:
-        response = self._get(
-            request_url=self.GET_ACCOUNT_URL,
-            **kwargs
-        )
-        return response.json()
-
-    def get_organization_types(self):
-        response = self._get(
-            self.ORGANIZATION_TYPES_URL
-        )
-        return response.json()
-
-    def create_organization(self, organization_data: dict):
-        response = post(
-            self.CREATE_ORGANIZATION_URL,
-            headers=self.headers,
-            json=organization_data,
-        )
-        return response.json()
-
-    def verify_organization(self, organization_id: int, verify: bool):
-        response = post(
-            self.VERIFY_ORGANIZATION_URL + f'{organization_id}/',
-            headers=self.headers,
-            json={
-                'is_verify': verify
-            },
-        )
-        return response
-
-    def get_organization_by_telegram_id(self, telegram_id: str):
-        response = get(
-            self.GET_ORGANIZATION_BY_TELEGRAM_ID_URL + f'{telegram_id}',
-            headers=self.headers,
-        )
-        return response
-
-    def get_organization_data_by_telegram_id(self, telegram_id: str) -> Response:
-        response = get(
-            self.GET_ORGANIZATION_DATA_BY_TELEGRAM_ID_URL + f'{telegram_id}',
-            headers=self.headers,
-        )
-        return response
-
-    def get_moderator(self, moderator_data: dict) -> Response:
-        response = post(
-            self.GET_MODERATOR_URL,
-            headers=self.headers,
-            json=moderator_data,
-        )
-        return response
-
-    def delete_master(self, master_id: int) -> int:
-        response = delete(
-            self.DELETE_MASTER_URL + f"{master_id}",
-            headers=self.headers
-        )
-        return response.status_code
-
-    def create_master(self, master_data: dict) -> Response:
-        response = post(
-            self.CREATE_MASTER_URL,
-            headers=self.headers,
-            json=master_data
-        )
-        print(response.json())
-        return response
-
-    def edit_master(self, master_data: dict, master_id: int) -> Response:
-        response = patch(
-            self.EDIT_MASTER_URL + f"{master_id}",
-            headers=self.headers,
-            json=master_data
-        )
-        return response
-
-    def get_master_services(self, master_id: int) -> Response:
-        response = get(
-            self.MASTER_SERVICES_URL.format(master_id),
-            headers=self.headers
-        )
-        return response
-
-    def get_service_detail(self, service_id: int) -> Response:
-        response = get(
-            self.SERVICE_DETAIL_URL,
-            headers=self.headers,
-            params={
-                'service_id': service_id
-            }
-        )
-        return response
-
-    def create_service(self, service_data: dict, master_id: int) -> Response:
-        response = post(
-            self.MASTER_SERVICES_URL.format(master_id),
-            headers=self.headers,
-            json=service_data,
-        )
-        print(response.json())
-        return response
-
-    def delete_service(self, service_id: int) -> Response:
-        response = delete(
-            self.SERVICE_DETAIL_URL,
-            headers=self.headers,
-            params={
-                'service_id': service_id
-            }
-        )
-        return response
-
-    def edit_service(self, service_id: int, service_data: dict):
-        response = patch(
-            self.SERVICE_DETAIL_URL,
-            json=service_data,
-            headers=self.headers,
-            params={
-                'service_id': service_id
-            }
-        )
-
-        return response
-
-    def master_verify(self, master_data: dict) -> Response:
-        response = post(
-            self.MASTER_VERIFY_URL,
-            headers=self.headers,
-            json=master_data
-        )
-        return response
-
-    def master_clients(self, telegram_id: int) -> Response:
-        response = get(
-            self.MASTER_CUSTOMERS_URL.format(telegram_id),
-            headers=self.headers,
-        )
-        return response
-
-    def master_last_booking(self, telegram_id: int | str) -> Response:
-        response = get(
-            self.MASTER_LAST_BOOKING_URL.format(telegram_id),
-            headers=self.headers,
-        )
-        return response
-
-    def customer_last_booking(self, telegram_id: int | str) -> Response:
-        response = get(
-            self.CUSTOMER_LAST_BOOKING_URL.format(telegram_id),
-            headers=self.headers
-        )
-        return response
-
-    def customer_verify(self, verify_data:dict) -> Response:
-        response = get(
-            self.CUSTOMER_VERIFY_URL,
-            headers=self.headers,
-            json=verify_data
-        )
-        return response
-
-    def check_customer(self, telegram_id: int) -> Response:
-        response = post(
-            self.CUSTOMER_CHECK_URL,
-            headers=self.headers,
-            params={
-                'telegram_id': telegram_id,
-            }
-        )
-        return response
-
-# File: ./organization_bot/src/__init__.py
-
-
-# File: ./organization_bot/src/services.py
-import dataclasses
-import os
-import re
-import shutil
-import uuid
-from os import listdir
-from os.path import isfile, join
-
-from telebot import TeleBot
-from telebot.types import (Message,
-                           ReplyKeyboardMarkup,
-                           KeyboardButton,
-                           ReplyKeyboardRemove,
-                           InlineKeyboardButton,
-                           InlineKeyboardMarkup, CallbackQuery)
-
-from config.redis import dict_get, dict_set
-from fixmaster_backend import FixMasterClient
-from config.settings import s3, bucket_name
-
-fix_master_client = FixMasterClient(
-    api_key='test'
-)
-
-organization_menu_markup = ReplyKeyboardMarkup()
-
-master_list = KeyboardButton("📃 Список мастеров")
-client_list = KeyboardButton('👥 Список клиентов')
-add_master = KeyboardButton('➕ Добавить мастера')
-
-
-organization_menu_markup.row(master_list, client_list)
-organization_menu_markup.add(add_master)
-
-
-@dataclasses.dataclass(slots=True, frozen=True)
-class OrganizationData:
-    phone_number: str
-    main_image: bytes
-    organization_type: int
-    begin_time: str
-    end_time: str
-    work_schedule: str
-    address: str
-
-
-def get_organization_data(telegram_id: str | int) -> dict:
-    response = fix_master_client.get_organization_data_by_telegram_id(
-        telegram_id
-    )
-    if response.status_code == 200:
-        print(response.status_code)
-        return response.json()['data']
-
-    return response.json()
-
-
-def is_organization_exist(telegram_id: str) -> bool:
-    response = fix_master_client.get_organization_by_telegram_id(
-        telegram_id
-    )
-    if response.status_code == 200:
-        return False
-    else:
-        return True
-
-
-def is_phone_number(text: str):
-    phone_pattern = re.compile(r'^\+?\d{1,4}?[-.\s]?(\(?\d{1,4}?\)?[-.\s]?)?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}$')
-    return bool(phone_pattern.match(text))
-
-
-def get_organization_type_id(title: str) -> int:
-    organization_type_id = list(filter(
-        lambda x: x['title'] == title,
-        fix_master_client.get_organization_types()['data']
-    ))[0]
-    return organization_type_id['id']
-
-
-def generate_organization_types_buttons() -> ReplyKeyboardMarkup:
-    """
-    Получение кнопок для выбора типа организации
-    """
-    markup = ReplyKeyboardMarkup()
-    organization_types = fix_master_client.get_organization_types()
-    print(organization_types)
-    for t in organization_types['data']:
-        markup.add(KeyboardButton(text=f"{t['title']}"))
-    return markup
-
-
-def generate_all_times_buttons(default_time=4) -> ReplyKeyboardMarkup:
-    markup = ReplyKeyboardMarkup(row_width=2)
-    [markup.add(KeyboardButton(f"{i}:00")) for i in range(default_time, 20)]
-    return markup
-
-
-def generate_service_min_time_button():
-    markup = ReplyKeyboardMarkup(row_width=2)
-    [
-        markup.add(
-            KeyboardButton(f"{i}0 мин")
-        ) for i in range(1, 10)
-    ]
-    return markup
-
-
-def generate_master_detail_data(master_data: dict) -> str:
-    result_message = ""
-    master_data.pop('services')
-    for key, value in master_data.items():
-        result_message += f"{key}: {value}\n"
-    print(result_message)
-    return result_message
-
-
-def generate_service_detail_data(service_data: dict) -> str:
-    result_message = ""
-    for key, value in service_data.items():
-        result_message += f"{key}: {value}\n"
-    print(result_message)
-    return result_message
-
-
-def get_master_services(master_id: int):
-    response = fix_master_client.get_master_services(
-        master_id
-    )
-    if response.status_code == 200:
-        return response.json()['data']
-    return response.text
-
-
-def get_service_detail(service_id: int):
-    response = fix_master_client.get_service_detail(
-        service_id
-    )
-    if response.status_code == 200:
-        return response.json()['data']
-    return response.text
-
-
-class GetProfileTelebot:
-    def __init__(self, bot: TeleBot, message: Message):
-        self.bot = bot
-        self.bot.register_next_step_handler(message, self.get_number)
-
-    def get_number(self, message: Message):
-        """ Получение данных телефона """
-
-        try:
-            self.phone_number = message.text
-            self.bot.send_message(
-                chat_id=message.chat.id,
-                text="Теперь введите код"
-            )
-        except:
-            self.bot.send_message(
-                chat_id=message.chat.id,
-                text="Вы ввели неправильный формат\nПопробуйте еще раз.\nПример: 89990001122"
-            )
-            self.bot.register_next_step_handler(message, self.get_number)
-            return
-
-    def get_code(self, message: Message):
-        response_data = fix_master_client.get_profile(
-            phone_number=self.phone_number,
-            user_keyword=self.user_keyword,
-            telegram_id=message.chat.id,
-            username=message.from_user.username
-        )
-        self.bot.send_message(
-            chat_id=message.chat.id,
-            text=response_data.get('message')
-        )
-
-
-class OrganizationCreate:
-    """ Логика создания организаций """
-
-    def __init__(self, bot: TeleBot, message: Message):
-        self.bot = bot
-        self.message = message
-        self.organization = dict()
-        if is_organization_exist(self.message.chat.id):
-            self._send(
-                text="Вы уже зарегистрированы в системе",
-                reply_markup=organization_menu_markup
-            )
-            self._send(
-                text=get_organization_data(self.message.chat.id).get('title', 'Cle')
-            )
-            return
-        self.start(message)
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def _step(self, message, func):
-        self.bot.register_next_step_handler(message, func)
-
-    def start(self, message):
-        self._send(
-            text="Введите название \n",
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        self._step(message, self.get_title)
-
-    def get_title(self, message: Message):
-        self.organization['title'] = message.text
-        self._send(
-            text="Введите номер телефона горячей линии организации\nПример: 82930703023",
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        self._step(message, self.get_number)
-
-    def get_number(self, message: Message):
-        while True:
-            try:
-                self.organization['contact_phone'] = message.text
-                if not is_phone_number(self.organization['contact_phone']):
-                    self._send(text="Введите корректный номер телефона")
-                    self._step(message, self.get_number)
-                    return
-
-                # next msg
-                self._send(
-                    text="Введите главное изображене"
-                )
-                self._step(message, self.get_main_image)
-                break
-            except TypeError:
-                self._send(
-                    text="Введите корректный номер телефона"
-                )
-                self._step(message, self.get_number)
-                return
-
-    def get_main_image(self, message: Message):
-        while True:
-            try:
-                download_message = self._send(
-                    'Загружаем...'
-                )
-                file_id = message.photo[-1].file_id
-                file_info = self.bot.get_file(file_id)
-                downloaded_file = self.bot.download_file(file_info.file_path)
-                with open(file_info.file_path, 'wb') as file:
-                    file.write(downloaded_file)
-
-                s3.upload_file(
-                    Filename=file_info.file_path,
-                    Bucket=bucket_name,
-                    Key=file_info.file_path
-                )
-
-                self.organization[
-                    'main_image_url'
-                ] = f"https://s3.timeweb.cloud/dea7d49e-ba387d71-db58-4c7f-8b19-e217f5775615/{file_info.file_path}"
-                break
-
-            except Exception as _:
-                print(_.args)
-                self._send(
-                    text="Введите корректное изображение",
-                )
-                self._step(message, self.get_main_image)
-                return
-        # msg
-        self.bot.edit_message_text(
-            chat_id=download_message.chat.id,
-            message_id=download_message.id,
-            text="Отлично!\n",
-        )
-        self._send(
-            text='Выберите фотографии вашей организации!'
-        )
-        self._step(message, self.get_organization_gallery)
-
-    def get_organization_gallery(self, message):
-        try:
-            file_id = message.photo[-1].file_id
-            file_info = self.bot.get_file(file_id)
-            downloaded_file = self.bot.download_file(file_info.file_path)
-
-            path = f'photos/{message.from_user.username}/'
-            if not os.path.isdir(path):
-                os.mkdir(path)
-
-            file_path = os.path.join(path, f"{str(uuid.uuid4())}.jpg")
-            with open(file_path, 'wb') as file:
-                file.write(downloaded_file)
-
-            s3.upload_file(
-                Filename=file_path,
-                Bucket=bucket_name,
-                Key=file_path
-            )
-            self._send(
-                text='Теперь выберите тип вашей организации!',
-                reply_markup=generate_organization_types_buttons()
-            )
-            self._step(message, self.get_organization_type)
-        except:
-            self._send(
-                text='Выберите корректные фотографии',
-            )
-            self._step(message, self.get_organization_type)
-    def get_organization_type(self, message: Message):
-        self.organization['organization_type_id'] = get_organization_type_id(message.text)
-
-        # msg
-        self._send(
-            text="Выберите начало рабочего дня",
-            reply_markup=generate_all_times_buttons()
-        )
-        self._step(message, self.get_begin_time)
-
-    def get_begin_time(self, message: Message):
-        self.organization['time_begin'] = message.text
-
-        # msg
-        self._send(
-            text="А теперь выберите конец рабочего дня",
-            reply_markup=generate_all_times_buttons()
-        )
-        self._step(message, self.get_end_time)
-
-    def get_end_time(self, message: Message):
-        self.organization['time_end'] = message.text
-
-        # msg
-        self._send(
-            text="Введите график работы\nПример: 5/2, ПН-ПТ и тд.",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        self._step(message, self.get_work_schedule)
-
-    def get_work_schedule(self, message: Message):
-        self.organization['work_schedule'] = message.text
-
-        # msg
-        self._send(
-            text="Введите адрес организации",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        self._step(message, self.get_address)
-
-    def get_address(self, message: Message):
-        self.organization['address'] = message.text
-
-        self._send(
-            text="Отлично! Заявка на верификацию отправлена!\nЖдите ответа",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        print(self.organization)
-        self.organization['telegram_id'] = self.message.chat.id
-        path = f'photos/{message.from_user.username}/'
-        s3_url = "https://s3.timeweb.cloud/dea7d49e-ba387d71-db58-4c7f-8b19-e217f5775615/" + path
-        self.organization['gallery'] = [s3_url + f for f in listdir(path) if isfile(join(path, f))]
-
-        fix_master_client.create_organization(self.organization)
-        print(self.organization)
-        shutil.rmtree(path)
-
-
-class MasterListSrv:
-
-    def __init__(self, bot: TeleBot, message: Message, call: CallbackQuery = None):
-        self.bot = bot
-        self.message = message
-        self.call = call
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def generate_master_list_buttons(self):
-        self.master_list = get_organization_data(self.message.chat.id)['masters']
-        self.master_list_buttons = InlineKeyboardMarkup()
-        [self.master_list_buttons.add(InlineKeyboardButton(text=f"{i.get('name')} {i.get('surname')}",
-                                                           callback_data=f"masterdetail_{i.get('id')}"))
-         for i in self.master_list]
-
-    def execute(self):
-
-        self.generate_master_list_buttons()
-        if self.call:
-            self.bot.edit_message_text(
-                text=f"Список мастеров:\nУ вас {len(self.master_list)} мастеров",
-                reply_markup=self.master_list_buttons,
-                message_id=self.message.id,
-                chat_id=self.message.chat.id
-            )
-        else:
-            self._send(
-                text=f"Список мастеров:\nУ вас {len(self.master_list)} мастеров",
-                reply_markup=self.master_list_buttons,
-            )
-        return None
-
-
-class MasterDetailSrv:
-
-    def __init__(
-            self,
-            bot: TeleBot,
-            call: CallbackQuery,
-            master_id: int
-    ):
-        self.bot = bot
-        self.message = call.message
-        self.call_data = call.data
-        self.master_id = master_id
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def get_master_data(self):
-        try:
-            self.master_data = list(filter(
-                lambda x: x['id'] == self.master_id,
-                get_organization_data(self.message.chat.id)['masters']
-            ))[0]
-        except IndexError:
-            self.master_data = None
-
-    def generate_master_detail_buttons(self):
-        self.master_detail_buttons = InlineKeyboardMarkup()
-        edit_button = InlineKeyboardButton('Изменить', callback_data=f"masteredit_{self.master_data.get('id')}")
-        delete_button = InlineKeyboardButton('Удалить', callback_data=f"masterdelete_{self.master_data.get('id')}")
-        master_services_button = InlineKeyboardButton('Список улуг',
-                                                      callback_data=f"masterservices_list_{self.master_data.get('id')}")
-        back_button = InlineKeyboardButton(text='Назад', callback_data=f"backmasterlist_{self.message.chat.id}")
-        self.master_detail_buttons.add(edit_button)
-        self.master_detail_buttons.add(delete_button)
-        self.master_detail_buttons.add(master_services_button)
-        self.master_detail_buttons.add(back_button)
-
-    def execute(self):
-        self.get_master_data()
-        if self.master_data:
-            self.generate_master_detail_buttons()
-            self.bot.edit_message_text(
-                text=generate_master_detail_data(self.master_data),
-                reply_markup=self.master_detail_buttons,
-                message_id=self.message.id,
-                chat_id=self.message.chat.id
-            )
-
-        return None
-
-
-class MasterDeleteSrv:
-
-    def __init__(
-            self,
-            bot: TeleBot,
-            call: CallbackQuery,
-            master_id: int
-    ):
-        self.bot = bot
-        self.message = call.message
-        self.call_data = call.data
-        self.master_id = master_id
-
-    def generate_master_list_buttons(self):
-        self.master_list = get_organization_data(self.message.chat.id)['masters']
-        self.master_list_buttons = InlineKeyboardMarkup()
-        [self.master_list_buttons.add(InlineKeyboardButton(text=f"{i.get('name')} {i.get('surname')}",
-                                                           callback_data=f"masterdetail_{i.get('id')}"))
-         for i in self.master_list]
-
-    def delete_master(self):
-        self.bot.edit_message_text(
-            text="Удаляем мастера",
-            message_id=self.message.id,
-            chat_id=self.message.chat.id
-        )
-        fix_master_client.delete_master(
-            self.master_id
-        )
-
-    def execute(self):
-        self.delete_master()
-        self.generate_master_list_buttons()
-        self.bot.edit_message_text(
-            text=f"Список мастеров:\nУ вас {len(self.master_list)} мастеров",
-            reply_markup=self.master_list_buttons,
-            message_id=self.message.id,
-            chat_id=self.message.chat.id
-        )
-        return None
-
-
-class MasterCreateSrv:
-
-    def __init__(self, bot: TeleBot, message: Message):
-        self.bot = bot
-        self.message = message
-        self.master_data = dict()
-
-        self.start(message)
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def _step(self, message, func):
-        self.bot.register_next_step_handler(message, func)
-
-    def start(self, message):
-
-        self._send(
-            text="Введите имя мастера\n",
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        self._step(message, self.get_name)
-
-    def get_name(self, message: Message):
-        self.master_data['name'] = message.text
-        self._send(
-            text="Введите фамилию мастера",
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        self._step(message, self.get_surname)
-
-    def get_surname(self, message: Message):
-        if message.text == 'Пропустить':
-            self._step(message, self.get_image)
-            return
-        self.master_data['surname'] = message.text
-
-        # next msg
-        self._send(
-            text="Введите фотографию мастера"
-        )
-        self._step(message, self.get_image)
-
-    def get_image(self, message: Message):
-        while True:
-            try:
-
-                download_message = self._send(
-                    'Загружаем...'
-                )
-                file_id = message.photo[-1].file_id
-                print("Получаем файл", file_id)
-
-                file_info = self.bot.get_file(file_id)
-                print("Получаем файл", file_info.__dict__)
-
-                downloaded_file = self.bot.download_file(file_info.file_path)
-                print("Началась загрузка фотографии загрузилась 1")
-                with open(file_info.file_path, 'wb') as file:
-                    file.write(downloaded_file)
-                print("Началась загрузка фотографии загрузилась 2")
-                s3.upload_file(
-                    Filename=file_info.file_path,
-                    Bucket=bucket_name,
-                    Key=file_info.file_path
-                )
-                print("Фотография загрузилась")
-
-                self.master_data[
-                    'image_url'] = f"https://s3.timeweb.cloud/dea7d49e-ba387d71-db58-4c7f-8b19-e217f5775615/{file_info.file_path}"
-                break
-
-            except Exception as _:
-                self._send(
-                    text="Введите корректное изображение",
-                )
-                print(_.args)
-                self._step(message, self.get_image)
-                return
-        # msg
-        self.bot.edit_message_text(
-            chat_id=download_message.chat.id,
-            message_id=download_message.id,
-            text="Отлично!\n",
-
-        )
-        self._send(
-            text="Мастер создан!",
-            reply_markup=organization_menu_markup
-        )
-        self.master_data['organization_id'] = get_organization_data(self.message.chat.id).get('id')
-        response = fix_master_client.create_master(self.master_data)
-        code = response.json()['data']
-        self._send(
-            text=f"Перешлите это сообщение мастеру\nhttps://t.me/fix_master_employee_bot/?text={code}"
-        )
-
-
-class MasterEditSrv:
-    def __init__(self, bot: TeleBot, message: Message, master_id: int):
-        self.bot = bot
-        self.message = message
-        self.master_data = dict()
-        self.master_id = master_id
-        self.start(message)
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def _step(self, message, func):
-
-        self.bot.register_next_step_handler(message, func)
-
-    def start(self, message):
-        self.skip_button_markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-        self.skip_button_markup.add(
-            KeyboardButton(text='Не изменять')
-        )
-        self._send(
-            text="Введите имя мастера\nИли нажмите 'Не изменять'",
-            reply_markup=self.skip_button_markup
-        )
-
-        self._step(message, self.get_name)
-
-    def get_name(self, message: Message):
-
-        if message.text == 'Не изменять':
-            self._send(
-                text="Введите фамилию мастера",
-                reply_markup=self.skip_button_markup
-            )
-            self._step(message, self.get_surname)
-            return
-        else:
-            self.master_data['name'] = message.text
-            self._send(
-                text="Введите фамилию мастера",
-                reply_markup=self.skip_button_markup
-            )
-
-            self._step(message, self.get_surname)
-
-    def get_surname(self, message: Message):
-        if message.text == 'Не изменять':
-            self._send(
-                text="Введите фотографию мастера"
-            )
-            self._step(message, self.get_image)
-            return
-        self.master_data['surname'] = message.text
-
-        # next msg
-        self._send(
-            text="Введите фотографию мастера"
-        )
-        self._step(message, self.get_image)
-
-    def get_image(self, message: Message):
-        download_message = None
-        while True:
-            try:
-
-                if message.text == 'Не изменять':
-                    break
-
-                download_message = self._send(
-                    'Загружаем...'
-                )
-                file_id = message.photo[-1].file_id
-                print("Получаем файл", file_id)
-
-                file_info = self.bot.get_file(file_id)
-                print("Получаем файл", file_info.__dict__)
-
-                downloaded_file = self.bot.download_file(file_info.file_path)
-                print("Началась загрузка фотографии загрузилась 1")
-                with open(file_info.file_path, 'wb') as file:
-                    file.write(downloaded_file)
-                print("Началась загрузка фотографии загрузилась 2")
-                s3.upload_file(
-                    Filename=file_info.file_path,
-                    Bucket=bucket_name,
-                    Key=file_info.file_path
-                )
-                print("Фотография загрузилась")
-                self.master_data[
-                    'image_url'] = f"https://s3.timeweb.cloud/dea7d49e-ba387d71-db58-4c7f-8b19-e217f5775615/{file_info.file_path}"
-                break
-
-            except Exception as _:
-                self._send(
-                    text="Введите корректное изображение",
-                )
-                print(_.args)
-
-                self._step(message, self.get_image)
-                return
-
-        # msg
-        if download_message:
-            self.bot.edit_message_text(
-                chat_id=download_message.chat.id,
-                message_id=download_message.id,
-                text="Отлично!\n",
-            )
-        self._send(
-            text="Мастер Изменен!",
-            reply_markup=organization_menu_markup
-        )
-        self.master_data['organization_id'] = get_organization_data(self.message.chat.id).get('id')
-        fix_master_client.edit_master(self.master_data, self.master_id)
-
-
-class MasterServiceListSrv:
-
-    def __init__(self,
-                 bot: TeleBot,
-                 message: Message,
-                 master_id: int):
-        self.bot = bot
-        self.message = message
-        self.master_id = master_id
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def get_services_list(self):
-        self.master_services = get_master_services(self.master_id)
-
-    def generate_service_list_buttons(self):
-        self.services_list_buttons = InlineKeyboardMarkup()
-        self.services_list = self.master_services
-        [
-            self.services_list_buttons.add(
-                InlineKeyboardButton(
-                    f"{i.get('title')}",
-                    callback_data='masterservice_detail_{}'.format(i.get('id'))
-                )
-            )
-            for i in self.services_list
-        ]
-        self.services_list_buttons.add(
-            InlineKeyboardButton(
-                text='Добавить услугу',
-                callback_data='masterservice_create_{}'.format(self.master_id)
-            )
-        )
-        self.services_list_buttons.add(
-            InlineKeyboardButton(
-                'Назад',
-                callback_data='masterdetail_{}'.format(self.master_id)
-            )
-        )
-
-    def execute(self):
-        self.get_services_list()
-        self.generate_service_list_buttons()
-        self.bot.edit_message_text(
-            text=f"Список услуг мастера:\nУ мастера {len(self.services_list)} услуг",
-            reply_markup=self.services_list_buttons,
-            message_id=self.message.id,
-            chat_id=self.message.chat.id
-        )
-        return None
-
-
-class MasterServiceDetailSrv:
-
-    def __init__(self,
-                 bot: TeleBot,
-                 message: Message,
-                 service_id: int):
-        self.bot = bot
-        self.message = message
-        self.service_id = service_id
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def get_service_detail(self):
-        self.service_detail = get_service_detail(self.service_id)
-
-    def generate_service_list_buttons(self):
-        self.service_detail_buttons = InlineKeyboardMarkup()
-        edit_button = InlineKeyboardButton('Изменить',
-                                           callback_data=f"mastereservice_edit_{self.service_detail.get('id')}")
-        delete_button = InlineKeyboardButton('Удалить',
-                                             callback_data=f"masterservice_delete_{self.service_detail.get('id')}")
-        back_button = InlineKeyboardButton('Назад',
-                                           callback_data=f"masterservices_list_{self.service_detail.get('master_id')}")
-        self.service_detail_buttons.add(edit_button)
-        self.service_detail_buttons.add(delete_button)
-        self.service_detail_buttons.add(back_button)
-
-    def execute(self):
-        self.get_service_detail()
-        self.generate_service_list_buttons()
-        self.bot.edit_message_text(
-            text=" услуг",
-            chat_id=self.message.chat.id,
-            message_id=self.message.id,
-            reply_markup=self.service_detail_buttons
-        )
-        return None
-
-
-class MasterServiceCreateSrv:
-    def __init__(self,
-                 bot: TeleBot,
-                 message: Message,
-                 master_id: int):
-        self.bot = bot
-        self.message = message
-        self.service_data = dict()
-        self.master_id = master_id
-        self.start(message)
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def _step(self, message, func):
-        self.bot.register_next_step_handler(message, func)
-
-    def start(self, message):
-        self._send(
-            text="Введите название услуги \n",
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        self._step(message, self.get_title)
-
-    def get_title(self, message: Message):
-        self.service_data['title'] = message.text
-        self._send(
-            text="Введите короткое описание услуги",
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        self._step(message, self.get_description)
-
-    def get_description(self, message: Message):
-        self.service_data['short_description'] = message.text
-
-        # next msg
-        self._send(
-            text="Выберите длительность услуги",
-            reply_markup=generate_service_min_time_button()
-        )
-        self._step(message, self.get_min_time)
-
-    def get_min_time(self, message: Message):
-        # msg
-        try:
-            if 'мин' in message.text:
-                time = message.text.replace('мин', '')
-                int(time)
-                self.service_data['min_time'] = time
-
-        except ValueError:
-            self._send(
-                text="Выберите число из списка"
-            )
-            self._step(message, self.get_min_time)
-            return
-        self._send(
-            text="Введите стоимость услуги в рублях",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        self._step(message, self.get_price)
-
-    def get_price(self, message: Message):
-        self.service_data['price'] = message.text
-        try:
-            int(message.text)
-        except ValueError:
-            self._send(
-                text="Введите корректную стоимость "
-            )
-            self._step(message, self.get_price)
-            return
-
-        self._send(
-            text="Услуга создана",
-            reply_markup=organization_menu_markup
-        )
-        self.service_data['master_id'] = self.master_id
-        fix_master_client.create_service(self.service_data, self.master_id)
-
-
-class MasterServiceEditSrv:
-    def __init__(self,
-                 bot: TeleBot,
-                 message: Message,
-                 service_id: int):
-        self.bot = bot
-        self.message = message
-        self.service_data = dict()
-        self.service_id = service_id
-        self.start(message)
-
-    def _send(self, text, **kwargs):
-        message = self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-        return message
-
-    def _step(self, message, func):
-        self.bot.register_next_step_handler(message, func)
-
-    def start(self, message):
-        self.skip_button_markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-        self.skip_button_markup.add(
-            KeyboardButton(text='Не изменять')
-        )
-        self._send(
-            text="Введите название услуги \n или нажмине 'Не изменять'",
-            reply_markup=self.skip_button_markup
-        )
-
-        self._step(message, self.get_title)
-
-    def get_title(self, message: Message):
-        if message.text == 'Не изменять':
-            self._send(
-                text="Введите короткое описание услуги",
-                reply_markup=self.skip_button_markup
-            )
-            self._step(message, self.get_description)
-            return
-        self.service_data['title'] = message.text
-        self._send(
-            text="Введите короткое описание услуги",
-            reply_markup=self.skip_button_markup
-        )
-
-        self._step(message, self.get_description)
-
-    def get_description(self, message: Message):
-        new_skip_button_markup = generate_service_min_time_button()
-        new_skip_button_markup.add(KeyboardButton(text='Не изменять'))
-        if message.text == 'Не изменять':
-            self._send(
-                text="Выберите длительность услуги",
-                reply_markup=new_skip_button_markup
-            )
-            self._step(message, self.get_min_time)
-            return
-        self.service_data['short_description'] = message.text
-
-        # next msg
-        self._send(
-            text="Выберите длительность услуги",
-            reply_markup=generate_service_min_time_button()
-        )
-        self._step(message, self.get_min_time)
-
-    def get_min_time(self, message: Message):
-        if message.text == 'Не изменять':
-            self._send(
-                text="Введите стоимость услуги в рублях",
-                reply_markup=self.skip_button_markup
-            )
-            self._step(message, self.get_price)
-            return
-        # msg
-        try:
-            if 'мин' in message.text:
-                time = message.text.replace('мин', '')
-                int(time)
-                self.service_data['min_time'] = time
-
-        except ValueError:
-            self._send(
-                text="Выберите число из списка"
-            )
-            self._step(message, self.get_min_time)
-            return
-        self._send(
-            text="Введите стоимость услуги в рублях",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        self._step(message, self.get_price)
-
-    def get_price(self, message: Message):
-        if message.text == 'Не изменять':
-            pass
-        else:
-            self.service_data['price'] = message.text
-            try:
-                int(message.text)
-            except ValueError:
-                self._send(
-                    text="Введите корректную стоимость "
-                )
-                self._step(message, self.get_price)
-                return
-
-        self._send(
-            text="Услуга изменена",
-            reply_markup=organization_menu_markup
-        )
-        fix_master_client.edit_service(service_id=self.service_id, service_data=self.service_data)
-
-
-class MasterServiceDeleteSrv:
-    def __init__(self,
-                 bot: TeleBot,
-                 message: Message,
-                 service_id: int):
-        self.bot = bot
-        self.message = message
-        self.service_id = service_id
-
-    def delete_service(self):
-        fix_master_client.delete_service(service_id=self.service_id)
-
-    def execute(self):
-        self.delete_service()
-        self.bot.edit_message_text(
-            text="Услуга удалена",
-            chat_id=self.message.chat.id,
-            message_id=self.message.id,
-        )
-        return None
-
-
-# File: ./config/__init__.py
-from config.redis import cache
-
-__all__ = ('cache',)
-
-# File: ./config/redis.py
-import pickle
-
-import redis
-
-cache = redis.Redis(
-    host='localhost',
-)
-
-
-def dict_set(name: str, data: dict):
-    cache.set(name, pickle.dumps(data))
-
-
-def dict_get(name: str) -> dict:
-    if value := cache.get(name):
-        return pickle.loads(value)
-
-
-# File: ./config/settings.py
-"""
-Project settings
-"""
-import os
-from pathlib import Path
-import boto3
-
-from dotenv import load_dotenv
-
-load_dotenv()
-
-CLIENT_BOT_TOKEN = os.getenv('CLIENT_BOT_TOKEN')
-MASTER_BOT_TOKEN = os.getenv('MASTER_BOT_TOKEN')
-ORGANIZATION_BOT_TOKEN = os.getenv('ORGANIZATION_BOT_TOKEN')
-MODERATOR_BOT_TOKEN = os.getenv('MODERATOR_BOT_TOKEN')
-
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_KEY')
-AWS_BUCKET_NAME = os.getenv('AWS_BUCKET_NAME')
-AWS_UPLOAD_URL = os.getenv('AWS_UPLOAD_URL')
-AWS_CUSTOM_URL = os.getenv('AWS_CUSTOM_URL')
-
-bucket_name = AWS_BUCKET_NAME
-
-session = boto3.Session(
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
-    region_name="ru-1",
-)
-
-s3 = session.client(
-    "s3", endpoint_url=AWS_UPLOAD_URL)
-print(s3)
-
-
-# File: ./moderator_bot/__init__.py
-
-
-# File: ./moderator_bot/src/__init__.py
-
-
-# File: ./moderator_bot/src/services.py
-from telebot import TeleBot
-from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-
-from fixmaster_backend import FixMasterClient
-
-fix_master_client = FixMasterClient(
-    api_key='test'
-)
-
-
-class ModeratorCreate:
-    """ Логика создания организаций """
-
-    def __init__(self, bot: TeleBot, message: Message):
-        self.bot = bot
-        self.message = message
-        self.moderator = dict()
-        self.moderator['telegram_id'] = message.chat.id
-        self._send(
-            text="Введите логин \n",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        self.start(message)
-
-    def _send(self, text, **kwargs):
-        self.bot.send_message(
-            chat_id=self.message.chat.id,
-            text=text,
-            **kwargs
-        )
-
-    def _step(self, message, func):
-        self.bot.register_next_step_handler(message, func)
-
-    def start(self, message):
-        
-        self._step(
-            message,
-            self.get_login
-        )
-
-    def get_login(self, message: Message):
-        login = message.text
-        self.moderator['login'] = login
-        self._send(
-            text="Введите код"
-        )
-        self._step(
-            message, self.get_code
-        )
-
-    def get_code(self, message: Message):
-        while True:
-            code = message.text
-            self.moderator['code'] = code
-            response = fix_master_client.get_moderator(
-                    self.moderator
-                )
-            
-            print(response.status_code)
-            print(response.json())
-            if response.json():
-                if response.json()['code'] == 201:
-                    self._send(
-                        text=response.json()['message']
-                    )
-                    break
-                elif response.json()['code'] == 404:
-                    self._send(
-                        text=response.json()['message']
-                    )
-                    self._step(
-                        message,
-                        self.get_code
-                    )
-                    return
-                elif response.json()['code'] == 400:
-                    self._send(
-                        text=response.json()['message']
-                    )
-                    self._send(
-                        text="Введите логин еще раз"
-                    )
-                    self._step(
-                        message,
-                        self.get_login
-                    )
-                    return
-                elif response.json()['code'] == 440:
-                    self._send(
-                        text=response.json()['message']
-                    )
-                    return
-                
-                else:
-                    self._send(
-                        text=response.json()['message']
-                    )
-                    self._step(
-                        message,
-                        self.get_code
-                    )
-                    return
-
-
-
-class VerifiedOrganization:
-    def __init__(self, organization_id: int):
-        self.organization_id = organization_id
-
-    def verify_organization(self, verify: bool):
-        fix_master_client.verify_organization(
-            organization_id=self.organization_id,
-            verify=verify
-        )
-    
-
-
-# File: ./customer_bot/__init__.py
-
-
-# File: ./customer_bot/services.py
-from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
-from telebot import TeleBot
-
-from fixmaster_backend import FixMasterClient
-
-fix_master_client = FixMasterClient(
-    api_key='test'
-)
-
-
-
-def web_app_keyboard(user_id: int): #создание клавиатуры с webapp кнопкой
-    menu_buttons = ReplyKeyboardMarkup(row_width=1)
-    last_booking = KeyboardButton("Следующая бронь")
-    webAppTest = WebAppInfo(f"https://booking.fix-mst.ru/#/?user_id={user_id}") #создаем webappinfo - формат хранения url
-
-    one_butt = KeyboardButton(text="Забронировать еще", web_app=webAppTest) #создаем кнопку типа webapp
-    menu_buttons.row(one_butt, last_booking) #добавляем кнопки в клавиатуру
-
-    return menu_buttons #возвращаем клавиатуру
-
-def check_authorization(telegram_id: int | str):
-    response = fix_master_client.check_customer(telegram_id)
-    return response.status_code == 200
-
-
-class CustomerAuthorizationSrv:
-    def __init__(
-            self,
-            bot: TeleBot,
-            message: Message
-
-    ):
-        self.telegram_id = message.chat.id
-        self.bot = bot
-
-        self.bot.send_message(
-            chat_id=self.telegram_id,
-            text="Добро пожаловать в FixMaster для клиентов\n"
-        )
-        if not check_authorization(self.telegram_id):
-            self.bot.send_message(
-                chat_id=self.telegram_id,
-                text="Введите код для авторизации\n"
-            )
-            self.bot.register_next_step_handler(message, self.start)
-        else:
-
-            self.bot.send_message(
-                chat_id=self.telegram_id,
-                text="Вы уже авторизованы в системе",
-                reply_markup=web_app_keyboard(self.telegram_id)
-            )
-
-    def start(self, message: Message):
-        code = message.text
-
-        response = fix_master_client.customer_verify(
-            verify_data={
-                'telegram_id': self.telegram_id,
-                'code': code,
-                'username': message.from_user.username
-            }
-        )
-        print(response.text)
-        if response.status_code == 200:
-            self.bot.send_message(
-                chat_id=self.telegram_id,
-                text=response.json()['message'],
-                reply_markup=web_app_keyboard(self.telegram_id)
-            )
-            return
-        self.bot.send_message(
-            chat_id=self.telegram_id,
-            text=response.json()['message']
-        )
-
-
-class CustomerLastBookingSrv:
-    def __init__(
-            self,
-            bot: TeleBot,
-            message: Message
-
-    ):
-        self.telegram_id = message.chat.id
-        self.bot = bot
-
-    def get_last_booking(self) -> None:
-        """ Получение последней брони клиента """
-        response = fix_master_client.customer_last_booking(
-            telegram_id=self.telegram_id
-        )
-
-        self.bot.send_message(
-            chat_id=self.telegram_id,
-            text=response.json()['message']
-        )
-
-
-    def execute(self) -> None:
-        """ Выполнение команд """
-        self.get_last_booking()
-
-
-
 

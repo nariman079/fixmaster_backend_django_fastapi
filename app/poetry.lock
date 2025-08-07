@@ -396,6 +396,22 @@ asgiref = ">=3.6"
 Django = ">=3.2"
 
 [[package]]
+name = "django-prometheus"
+version = "2.4.1"
+description = "Django middlewares to monitor your application with Prometheus.io."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "django_prometheus-2.4.1-py2.py3-none-any.whl", hash = "sha256:7fe5af7f7c9ad9cd8a429fe0f3f1bf651f0e244f77162147869eab7ec09cc5e7"},
+    {file = "django_prometheus-2.4.1.tar.gz", hash = "sha256:073628243d2a6de6a8a8c20e5b512872dfb85d66e1b60b28bcf1eca0155dad95"},
+]
+
+[package.dependencies]
+Django = ">=4.2,<6.0"
+prometheus-client = ">=0.7"
+
+[[package]]
 name = "django-timezone-field"
 version = "6.1.0"
 description = "A Django app providing DB, form, and REST framework fields for zoneinfo and pytz timezone objects."
@@ -709,6 +725,21 @@ files = [
 [package.dependencies]
 psycopg2-binary = ">=2.8"
 psycopg2-pool = "*"
+
+[[package]]
+name = "prometheus-client"
+version = "0.22.1"
+description = "Python client for the Prometheus monitoring system."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "prometheus_client-0.22.1-py3-none-any.whl", hash = "sha256:cca895342e308174341b2cbf99a56bef291fbc0ef7b9e5412a0f26d653ba7094"},
+    {file = "prometheus_client-0.22.1.tar.gz", hash = "sha256:190f1331e783cf21eb60bca559354e0a4d4378facecf78f5428c39b675d20d28"},
+]
+
+[package.extras]
+twisted = ["twisted"]
 
 [[package]]
 name = "prompt-toolkit"
@@ -1297,4 +1328,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "46a3f7fb4d6c3d1fbd5e80bd572e0ff0ab676aef3f6db9bdd3fa78eb28e66860"
+content-hash = "d3907c206f7c5205d265116295c97c1aaae5f6aac591f91fde465c978fd04017"
