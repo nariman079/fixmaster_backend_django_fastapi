@@ -14,7 +14,7 @@ from src.models import (
     Customer,
     Moderator,
     Booking,
-    Order
+    Order,
 )
 
 
@@ -86,8 +86,8 @@ content_management_admin.register(Booking)
 content_management_admin.register(Image, ImageAdmin)
 
 
-
 class OrderModelAdmin(admin.ModelAdmin):
     model = Order
+
 
 content_management_admin.register(Order, OrderModelAdmin)

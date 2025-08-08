@@ -66,6 +66,7 @@ class Order(models.Model):
     services = models.ManyToManyField(
         "src.Service",
     )
+    create_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return str(self.customer_phone)

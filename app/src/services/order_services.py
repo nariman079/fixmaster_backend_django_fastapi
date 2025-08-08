@@ -76,8 +76,6 @@ class OrderCreateSrv:
     def _get_all_services(self) -> None:
         self.serivces = Service.objects.filter(id__in=self.service_ids)
 
-        
-
         if not self.serivces:
             raise ValidationError(
                 {"message": "Нет таких услуг в системе", "success": False, "data": []},
@@ -140,7 +138,6 @@ class OrderCreateSrv:
             csm_metrics.APP_CUSTOMER_RETURNING_COUNTER.inc()
             print("Добавление существующего клиента")
 
-
         self.booking.customer = self.customer
         self.booking.save()
 
@@ -181,10 +178,10 @@ class OrderCreateSrv:
         self._create_customer()
         for service in self.serivces:
             csm_metrics.APP_SERVICE_SOLD_COUNTER.labels(
-                service_id=service.pk, 
+                service_id=service.pk,
                 service_name=service.title,
-                service_price=service.price
-            ).inc() 
+                service_price=service.price,
+            ).inc()
         # self._send_notification_on_master()
         # self._send_order_status_check()
 

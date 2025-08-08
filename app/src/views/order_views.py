@@ -2,7 +2,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.request import Request
 
-from config import csm_metrics
 
 from src.serializers.order_serializers import OrderSerializer, BookingSerializer
 from src.services.order_services import OrderCreateSrv, FreeBookingSrv

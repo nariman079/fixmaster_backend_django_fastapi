@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0026_gaugevalue'),
+        ("src", "0026_gaugevalue"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='order',
-            name='payment_id',
-            field=models.CharField(blank=True, default=' ', max_length=200, null=True),
+            model_name="order",
+            name="payment_id",
+            field=models.CharField(blank=True, default=" ", max_length=200, null=True),
         ),
         migrations.AlterField(
-            model_name='order',
-            name='payment_link',
-            field=models.CharField(blank=True, default=' ', max_length=500, null=True),
+            model_name="order",
+            name="payment_link",
+            field=models.CharField(blank=True, default=" ", max_length=500, null=True),
         ),
     ]

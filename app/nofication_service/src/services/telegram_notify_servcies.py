@@ -1,15 +1,8 @@
 from nofication_service.src.models import (
     Booking,
-    Client,
-    Organization,
-    Moderator,
-    Master,
 )
 from nofication_service.src.messages.telegram import (
     MasterMessages,
-    ModeratorMessages,
-    OrganizationMessages,
-    ClientMessages,
 )
 
 from nofication_service.src.interfaces import BotRepository
