@@ -130,7 +130,7 @@ async def create_organization(session, org_type_id):
     # Using a dummy telegram_id for creation
     data = aiohttp.FormData()
     data.add_field("title", "Тестовая Организация")
-    data.add_field("telegram_id", "org_admin_123")
+    data.add_field("telegram_id", "org_admin_121")
     # data.add_field('main_image', ...) # Omitted for simplicity
     data.add_field("main_image_url", "https://example.com/default_org.jpg")
     data.add_field("time_begin", start_time)
@@ -159,7 +159,7 @@ async def create_organization(session, org_type_id):
             else:
                 resp_text = await resp.text()
                 print(
-                    f"HTTP Error {resp.status} for Organization creation: {resp_text[:4000]}"
+                    f"HTTP Error {resp.status} for Organization creation: {resp_text[:6000]}"
                 )
                 return None
     except Exception as e:
@@ -360,7 +360,7 @@ async def main():
         print("\n1. Creating Organization Type...")
         print("\n2. Creating Organization...")
 
-        org_id = await create_organization(session, 1)
+        org_id = await create_organization(session, 2)
         if not org_id:
             print("Failed to create Organization. Aborting.")
             return
@@ -381,7 +381,7 @@ async def main():
         await create_random_bookings(session, master_ids, service_map, num_bookings=15)
 
         actions = [
-            create_organization(session, 1),
+            create_organization(session, 2),
             create_masters(session, org_id, num_masters=3),
             create_services(session, master_ids, services_per_master=3),
             create_services(session, master_ids, services_per_master=3),
@@ -392,7 +392,7 @@ async def main():
             try:
                 x = 5
                 if x == 1:
-                    await create_organization(session, 1)
+                    await create_organization(session, 2)
                 elif x == 2:
                     await create_masters(session, org_id, num_masters=3)
                 elif x == 3:

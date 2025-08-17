@@ -17,10 +17,10 @@ class OrderCreateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         if isinstance(serializer.validated_data, dict):
-            print(serializer)
             order_create_srv = OrderCreateSrv(
                 serializer_validate_data=serializer.validated_data,
                 serialzier_data=serializer.data,
+                logger=self.request.logger
             )
             return order_create_srv.execute()
         return Response(

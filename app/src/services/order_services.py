@@ -13,7 +13,7 @@ from config import csm_metrics
 
 from src.tasks import send_message_telegram_on_master, change_status_order
 from src.models import Order, Booking, Service, Customer, Organization
-
+from src.utils.logger import RequestLogger
 
 def complete_totals(services: QuerySet["Service"]) -> Any:
     """Complete full time length"""
@@ -46,8 +46,12 @@ class OrderCreateSrv:
     """
 
     def __init__(
-        self, serializer_validate_data: OrderedDict, serialzier_data: OrderedDict
+        self, 
+        serializer_validate_data: OrderedDict, 
+        serialzier_data: OrderedDict,
+        logger: RequestLogger
     ):
+        self.logger = logger
         self.serializer_data = serialzier_data
         self.master_id = serializer_validate_data.get("master_id")
         self.service_ids = serializer_validate_data.get("service_ids")  # type: ignore
@@ -108,6 +112,16 @@ class OrderCreateSrv:
         for i in self.service_ids:  # type: ignore
             self.order.services.add(i)
         self.order.save()
+        self.logger.debug(
+                "Создание заказа",
+                extra=dict(
+                    booking_date=self.order.begin_date,
+                    booking_time=self.begin_time,
+                    booking_end_time=self.summed_time,
+                    master_id=self.master_id,
+                )
+            )
+        
 
     def _create_booking(self):
         """Create booking"""
@@ -116,6 +130,15 @@ class OrderCreateSrv:
             booking_time=self.begin_time,
             booking_end_time=self.summed_time,
             master_id=self.master_id,
+        )
+        self.logger.debug(
+            "Создание брони",
+            extra=dict(
+                booking_date=self.order.begin_date,
+                booking_time=self.begin_time,
+                booking_end_time=self.summed_time,
+                master_id=self.master_id,
+            )
         )
 
     def _create_customer(self):
@@ -130,13 +153,30 @@ class OrderCreateSrv:
             )
             csm_metrics.APP_CUSTOMER_COUNT.inc()
             csm_metrics.APP_CUSTOMER_NEW_COUNTER.inc()
-            print("Добавление нового клиента")
+            self.logger.debug(
+                "Создание нового клиента",
+                extra=dict(
+                    customer_id=self.customer.pk,
+                    customer_name=self.customer_name,
+                    customer_phone=self.customer_phone,
+                    event='customer.add.new'
+                )
+            )
 
         else:
             self.customer.name = self.customer_name
             self.customer.save()
             csm_metrics.APP_CUSTOMER_RETURNING_COUNTER.inc()
-            print("Добавление существующего клиента")
+
+            self.logger.debug(
+                "Добавление существующего пользователя",
+                extra=dict(
+                    customer_id=self.customer.pk,
+                    customer_name=self.customer_name,
+                    customer_phone=self.customer_phone,
+                    event='customer.add.new'
+                )
+            )
 
         self.booking.customer = self.customer
         self.booking.save()
@@ -144,7 +184,8 @@ class OrderCreateSrv:
     def _send_notification_on_master(self):
         """Отправка сообщания мастеру о брони"""
         send_message_telegram_on_master.delay(
-            self.master_id, self.customer_phone, self.begin_date, self.begin_time
+            self.master_id, self.customer_phone, self.begin_date, self.begin_time,
+            self.logger.request_id
         )
 
     def _send_order_status_check(self):
@@ -188,7 +229,14 @@ class OrderCreateSrv:
         csm_metrics.APP_ORDERS_TOTAL_COUNTER.inc()
         csm_metrics.APP_ORDERS_NEW_TODAY.inc()
         csm_metrics.APP_ORDER_LENGTH_HISTOGRAM.observe(self.summed_num or 60)
-        print("Успешное создание заказа!!")
+        self.logger.debug(
+            "Заказ успешно создан",
+            extra=dict(
+                order_id=self.order.pk,
+                customer_id=self.customer.pk,
+                event='order.create'
+            )
+        )
         return Response(
             {
                 "message": "Заказ успешно создан",
@@ -263,29 +311,26 @@ class FreeBookingSrv:
         """
         Run commands
         """
-        with csm_metrics.APP_FREE_TIMES_DURATION.time():
-            try:
-                if is_retroactive_date(self.date):
-                    self._generate_organization_times()
-                    self.free_times = [
-                        {"time": i, "is_free": False} for i in self.times
-                    ]
-                    return Response(
-                        {
-                            "message": "All times has been received",
-                            "success": True,
-                            "data": self.free_times,
-                        },
-                        status=200,
-                    )
+        
+        if is_retroactive_date(self.date):
+            self._generate_organization_times()
+            self.free_times = [
+                {"time": i, "is_free": False} for i in self.times
+            ]
+            return Response(
+                {
+                    "message": "All times has been received",
+                    "success": True,
+                    "data": self.free_times,
+                },
+                status=200,
+            )
 
-                self._get_master_bookings()
-                self._generate_organization_times()
-                self._get_master_available_time()
-                self._generate_all_times()
-            finally:
-                csm_metrics.APP_FREE_TIMES_REQUESTS.inc()
-
+        self._get_master_bookings()
+        self._generate_organization_times()
+        self._get_master_available_time()
+        self._generate_all_times()
+       
         return Response(
             {
                 "message": "All times has been received",

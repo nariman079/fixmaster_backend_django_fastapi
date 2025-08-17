@@ -30,26 +30,36 @@ if __name__ == "__main__":
 # File: ./test.py
 import os
 
-project_dir = '.'  # Корень проекта
-output_file = 'project_code.txt'
-exclude_dirs = {'.venv','venv', '__pycache__', '.git', '.idea', '.mypy_cache', '.pytest_cache'}
+project_dir = "."  # Корень проекта
+output_file = "project_code.txt"
+exclude_dirs = {
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".git",
+    ".idea",
+    ".mypy_cache",
+    ".pytest_cache",
+}
 
-extra_files = {'Dockerfile', 'docker-compose.yml', 'docker-compose.yaml'}
-nginx_dirs = {'nginx'}
-nginx_extensions = {'.conf'}
+extra_files = {"Dockerfile", "docker-compose.yml", "docker-compose.yaml"}
+nginx_dirs = {"nginx"}
+nginx_extensions = {".conf"}
+
 
 def should_include_file(file_path, file_name):
-    if file_name.endswith('.py') and not file_name.endswith('.pyc'):
+    if file_name.endswith(".py") and not file_name.endswith(".pyc"):
         return True
     if file_name in extra_files:
         return True
     if any(file_name.endswith(ext) for ext in nginx_extensions):
         return True
-    if 'nginx' in file_path.split(os.sep):  # если файл внутри папки nginx
+    if "nginx" in file_path.split(os.sep):  # если файл внутри папки nginx
         return True
     return False
 
-with open(output_file, 'w', encoding='utf-8') as outfile:
+
+with open(output_file, "w", encoding="utf-8") as outfile:
     for root, dirs, files in os.walk(project_dir):
         # Исключаем ненужные директории
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
@@ -58,10 +68,10 @@ with open(output_file, 'w', encoding='utf-8') as outfile:
             file_path = os.path.join(root, file)
             if should_include_file(file_path, file):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         code = f.read()
-                        outfile.write(f'# File: {file_path}\n')
-                        outfile.write(code + '\n\n')
+                        outfile.write(f"# File: {file_path}\n")
+                        outfile.write(code + "\n\n")
                 except Exception as e:
                     print(f"Ошибка при чтении {file_path}: {e}")
 
@@ -188,6 +198,7 @@ from src.models import (
     Customer,
     Moderator,
     Booking,
+    Order,
 )
 
 
@@ -257,6 +268,13 @@ content_management_admin.register(OrganizationType)
 content_management_admin.register(Customer, CustomerAdmin)
 content_management_admin.register(Booking)
 content_management_admin.register(Image, ImageAdmin)
+
+
+class OrderModelAdmin(admin.ModelAdmin):
+    model = Order
+
+
+content_management_admin.register(Order, OrderModelAdmin)
 
 
 # File: ./src/admin/application_admin.py
@@ -403,7 +421,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.request import Request
 
-from config import csm_metrics 
 
 from src.serializers.order_serializers import OrderSerializer, BookingSerializer
 from src.services.order_services import OrderCreateSrv, FreeBookingSrv
@@ -419,13 +436,12 @@ class OrderCreateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         if isinstance(serializer.validated_data, dict):
-            print(serializer)
             order_create_srv = OrderCreateSrv(
                 serializer_validate_data=serializer.validated_data,
                 serialzier_data=serializer.data,
+                logger=self.request.logger
             )
             return order_create_srv.execute()
-        csm_metrics.APP_HTTP_REQUESTS.inc()
         return Response(
             {
                 "message": "Bad error",
@@ -459,6 +475,64 @@ class FreeBookingView(APIView):
             },
             status=422,
         )
+
+
+# File: ./src/views/csm_metrics_views.py
+from django.http import HttpResponse
+from prometheus_client import generate_latest
+
+from config import csm_metrics
+from config.settings import dict_get
+
+
+def metrics_view(request):
+    try:
+        order_status_count = dict_get("order_status_count")
+        organization_type_count = dict_get("organization_type_count")
+
+        for status, count in order_status_count.items():
+            csm_metrics.APP_ORDER_STATUS_GAUGE.labels(status=status).set(count)
+
+        for organization_type, count in organization_type_count.items():
+            csm_metrics.APP_ORGANIZATION_GAUGE.labels(
+                organization_type=organization_type
+            ).set(count)
+
+        for title, total_income in dict_get('income_by_services').items():
+            csm_metrics.APP_SERVICE_REVENUE_GAUGE.labels(
+                title=title
+            ).set(total_income)
+
+        counts = dict_get("counts")
+        master_count = counts.get("masters")
+        customers_today_count = counts.get("customers_today")
+
+        avg_times = dict_get("avg_data")
+        point_data = dict_get("point_data")
+
+        procedure_time = avg_times.get("procedure_time")
+        order_price = avg_times.get("order_price")
+
+        dau = point_data.get("dau")
+        mau = point_data.get("mau")
+
+        if master_count:
+            csm_metrics.APP_MASTER_TOTAL_GAUGE.set(master_count)
+        if customers_today_count:
+            csm_metrics.APP_CUSTOMER_TODAY_GAUGE.set(customers_today_count)
+        if procedure_time:
+            csm_metrics.APP_AVG_PROCEDURE_TIME_GAUGE.set(procedure_time)
+        if order_price:
+            csm_metrics.APP_AVG_ORDER_PRICE_GAUGE.set(order_price)
+        if dau:
+            csm_metrics.APP_DAU_GAUGE.set(dau)
+        if mau:
+            csm_metrics.APP_MAU_GAUGE.set(mau)
+
+    except Exception as e:
+        print(f"❌ Не удалось обновить метрику из БД: {e}")
+
+    return HttpResponse(generate_latest(), content_type="text/plain")
 
 
 # File: ./src/models/image_models.py
@@ -551,11 +625,12 @@ class Order(models.Model):
     customer_notice = models.CharField(
         "Коментарий", max_length=120, null=True, blank=True
     )
-    payment_id = models.CharField(max_length=200, default=" ")
-    payment_link = models.CharField(max_length=500, default=" ")
+    payment_id = models.CharField(max_length=200, default=" ", null=True, blank=True)
+    payment_link = models.CharField(max_length=500, default=" ", null=True, blank=True)
     services = models.ManyToManyField(
         "src.Service",
     )
+    create_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return str(self.customer_phone)
@@ -576,6 +651,7 @@ from src.models.organization_models import (
 )
 from src.models.image_models import Image
 from src.models.order_models import Order, Booking
+from src.models.csm_metrics_modesl import GaugeValue
 
 __all__ = (
     "Image",
@@ -588,6 +664,7 @@ __all__ = (
     "Master",
     "OrganizationType",
     "Moderator",
+    "GaugeValue",
 )
 
 
@@ -757,6 +834,7 @@ class Customer(models.Model):
         "src.Master", on_delete=models.SET_NULL, null=True, blank=True
     )
     is_verified = models.BooleanField("Верифицированный клиент", default=False)
+    create_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.username or self.name
@@ -788,6 +866,19 @@ class Moderator(models.Model):
         return self.login
 
 
+# File: ./src/models/csm_metrics_modesl.py
+from django.db import models
+
+
+class GaugeValue(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    value = models.BigIntegerField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} = {self.value}"
+
+
 # File: ./src/tasks/__init__.py
 from src.tasks.notification_tasks import (
     send_message_telegram_on_master,
@@ -798,6 +889,7 @@ from src.tasks.notification_tasks import (
 )
 from src.tasks.order_tasks import change_status_order
 from src.tasks.csm_metrics_tasks import update_metrics
+
 __all__ = (
     "send_message_telegram_on_master",
     "change_status_order",
@@ -805,8 +897,7 @@ __all__ = (
     "send_message_about_verify_master",
     "send_message_about_verify_customer",
     "send_is_verified_organization",
-
-    "update_metrics"
+    "update_metrics",
 )
 
 
@@ -966,20 +1057,125 @@ def change_status_order(order_id: int, new_status: str):
 
 
 # File: ./src/tasks/csm_metrics_tasks.py
-from celery import shared_task
+from datetime import timedelta
+from collections import defaultdict
 
-from src.models.order_models import Order
-from config.csm_metrics import APP_BOOKINGS_TOTAL
+from celery import shared_task
+from django.utils import timezone
+from django.db.models import Avg, Count, F, Q
+
+from config.settings import dict_set
+
+from src.models import Order, Master
+from src.models import (
+    OrganizationType,
+    Organization,
+    Customer,
+    Service,
+)
+from src.enums.statuses import CHOICES_STATUS
 
 
 @shared_task
 def update_metrics():
-    order_count = Order.objects.count()
-    print(order_count)
-    APP_BOOKINGS_TOTAL.set(order_count)
+    try:
+        order_status_count = {}
+        for status, _ in CHOICES_STATUS:
+            count = Order.objects.filter(status=status).count()
+            order_status_count[status] = count
+
+        dict_set("order_status_count", order_status_count)
+
+        organization_type_count = {}
+        for organization_type in OrganizationType.objects.all():
+            organizations_count = Organization.objects.filter(
+                organization_type=organization_type
+            ).count()
+            organization_type_count[organization_type.title] = organizations_count
+
+        dict_set("organization_type_count", organization_type_count)
+
+        master_count = Master.objects.count()
+        today = timezone.now().date()
+        month_ago = today - timedelta(days=30)
+
+        customers_new_today_count = Customer.objects.filter(
+            create_at__date=today
+        ).count()
+        dict_set(
+            "counts",
+            {"masters": master_count, "customers_today": customers_new_today_count},
+        )
+
+        avg_procedure_time = Order.objects.filter(status="done").aggregate(
+            avg_procedure_time=Avg("length_time")
+        )["avg_procedure_time"]
+        avg_order_price = Order.objects.filter(status="done").aggregate(
+            avg_order_price=Avg("services__price")
+        )["avg_order_price"]
+
+        dict_set(
+            "avg_data",
+            {"procedure_time": avg_procedure_time, "order_price": avg_order_price},
+        )
+
+        dau = (
+            Order.objects.filter(begin_date=today)
+            .values("customer_id")
+            .distinct()
+            .count()
+        )
+
+        mau = (
+            Order.objects.filter(begin_date__gte=month_ago)
+            .values("customer_id")
+            .distinct()
+            .count()
+        )
+
+        dict_set("point_data", {"dau": dau, "mau": mau})
+        completed_orders = Order.objects.filter(status="done").prefetch_related('services')
+        income_by_service = defaultdict(int)
+        for order in completed_orders:
+            for service in order.services.all():
+                income_by_service[service.title] += service.price
+     
+        income_by_services = {title: income for title, income in income_by_service.items() if income > 0}
+
+        dict_set("income_by_services", income_by_services)
+
+    except Exception as e:
+        print(f"❌ Не удалось обновить метрику из БД: {e}")
 
 
+# File: ./src/utils/__init__.py
 
+
+# File: ./src/utils/logger.py
+import logging
+import uuid
+
+logger = logging.getLogger("src")
+
+class RequestLogger:
+    def __init__(self, request_id: str) -> None:
+        self.request_id = request_id
+
+    def _log(self, level, msg, **kwargs):
+        kwargs.setdefault("extra", {})['request_id'] = self.request_id
+        getattr(logger, level)(msg, **kwargs)
+
+    def info(self, msg, **kwargs):
+        self._log("info", msg, **kwargs)
+
+    def warning(self, msg, **kwargs):
+        self._log("warning", msg, **kwargs)
+
+    def error(self, msg, **kwargs):
+        self._log("error", msg, **kwargs)
+
+    def debug(self, msg, **kwargs):
+        self._log("debug", msg, **kwargs)        
 
 
 
@@ -1090,6 +1286,26 @@ class Migration(migrations.Migration):
             field=models.ImageField(
                 blank=True, null=True, upload_to="images/", verbose_name="Изображение"
             ),
+        ),
+    ]
+
+
+# File: ./src/migrations/0029_order_create_at.py
+# Generated by Django 5.0.6 on 2025-08-07 08:57
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("src", "0028_customer_create_at"),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name="order",
+            name="create_at",
+            field=models.DateTimeField(auto_now=True),
         ),
     ]
 
@@ -1321,6 +1537,38 @@ class Migration(migrations.Migration):
     ]
 
 
+# File: ./src/migrations/0026_gaugevalue.py
+# Generated by Django 5.0.6 on 2025-08-05 08:16
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("src", "0025_alter_order_services"),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="GaugeValue",
+            fields=[
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, unique=True)),
+                ("value", models.BigIntegerField()),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+            ],
+        ),
+    ]
+
+
 # File: ./src/migrations/0010_alter_master_code.py
 # Generated by Django 5.0.6 on 2024-05-30 18:33
 
@@ -1341,6 +1589,61 @@ class Migration(migrations.Migration):
     ]
 
 
+# File: ./src/migrations/0031_merge_0029_order_create_at_0030_auto_20250813_1454.py
+# Generated by Django 5.0.6 on 2025-08-13 12:20
+
+from django.db import migrations
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('src', '0029_order_create_at'),
+        ('src', '0030_auto_20250813_1454'),
+    ]
+
+    operations = [
+    ]
+
+
+# File: ./src/migrations/0030_auto_20250813_1454.py
+from django.db import migrations
+from django.contrib.auth import get_user_model
+from src.models.organization_models import OrganizationType, Organization, Master
+
+def create_superuser(apps, schema_editor):
+    User = get_user_model()
+    if not User.objects.filter(username='root').exists():
+        User.objects.create_superuser(
+            username='root',
+            password='1'
+        )
+    org_type = OrganizationType.objects.create(title="Салон красоты")
+    org = Organization.objects.create(
+        title="title",
+        telegram_id="default",
+        address="address",
+        contact_phone="92323923",
+        time_begin="12:00:00",
+        time_end="12:00:00",
+        work_schedule="12-19",
+        organization_type=org_type
+    )
+
+# def remove_superuser(apps, schema_editor):
+#     User = get_user_model()
+#     User.objects.filter(username='admin').delete()
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('src', '0029_order_create_at'),
+    ]
+
+    operations = [
+        migrations.RunPython(create_superuser),
+    ]
+
 # File: ./src/migrations/0008_alter_master_telegram_id.py
 # Generated by Django 5.0.6 on 2024-05-23 20:04
 
@@ -1359,6 +1662,31 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 default="web_user", max_length=30, verbose_name="ID Телеграм"
             ),
+        ),
+    ]
+
+
+# File: ./src/migrations/0027_alter_order_payment_id_alter_order_payment_link.py
+# Generated by Django 5.0.6 on 2025-08-05 11:03
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("src", "0026_gaugevalue"),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name="order",
+            name="payment_id",
+            field=models.CharField(blank=True, default=" ", max_length=200, null=True),
+        ),
+        migrations.AlterField(
+            model_name="order",
+            name="payment_link",
+            field=models.CharField(blank=True, default=" ", max_length=500, null=True),
         ),
     ]
 
@@ -1840,6 +2168,26 @@ class Migration(migrations.Migration):
     ]
 
 
+# File: ./src/migrations/0028_customer_create_at.py
+# Generated by Django 5.0.6 on 2025-08-06 07:43
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("src", "0027_alter_order_payment_id_alter_order_payment_link"),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name="customer",
+            name="create_at",
+            field=models.DateTimeField(auto_now=True),
+        ),
+    ]
+
+
 # File: ./src/migrations/0013_moderator_alter_organization_main_image.py
 # Generated by Django 5.0.6 on 2024-05-31 19:23
 
@@ -2050,7 +2398,7 @@ from config import csm_metrics
 
 from src.tasks import send_message_telegram_on_master, change_status_order
 from src.models import Order, Booking, Service, Customer, Organization
-
+from src.utils.logger import RequestLogger
 
 def complete_totals(services: QuerySet["Service"]) -> Any:
     """Complete full time length"""
@@ -2083,8 +2431,12 @@ class OrderCreateSrv:
     """
 
     def __init__(
-        self, serializer_validate_data: OrderedDict, serialzier_data: OrderedDict
+        self, 
+        serializer_validate_data: OrderedDict, 
+        serialzier_data: OrderedDict,
+        logger: RequestLogger
     ):
+        self.logger = logger
         self.serializer_data = serialzier_data
         self.master_id = serializer_validate_data.get("master_id")
         self.service_ids = serializer_validate_data.get("service_ids")  # type: ignore
@@ -2112,6 +2464,7 @@ class OrderCreateSrv:
 
     def _get_all_services(self) -> None:
         self.serivces = Service.objects.filter(id__in=self.service_ids)
+
         if not self.serivces:
             raise ValidationError(
                 {"message": "Нет таких услуг в системе", "success": False, "data": []},
@@ -2144,7 +2497,16 @@ class OrderCreateSrv:
         for i in self.service_ids:  # type: ignore
             self.order.services.add(i)
         self.order.save()
-        csm_metrics.APP_ORDER_CREATED.inc()
+        self.logger.debug(
+                "Создание заказа",
+                extra=dict(
+                    booking_date=self.order.begin_date,
+                    booking_time=self.begin_time,
+                    booking_end_time=self.summed_time,
+                    master_id=self.master_id,
+                )
+            )
+        
 
     def _create_booking(self):
         """Create booking"""
@@ -2153,6 +2515,15 @@ class OrderCreateSrv:
             booking_time=self.begin_time,
             booking_end_time=self.summed_time,
             master_id=self.master_id,
+        )
+        self.logger.debug(
+            "Создание брони",
+            extra=dict(
+                booking_date=self.order.begin_date,
+                booking_time=self.begin_time,
+                booking_end_time=self.summed_time,
+                master_id=self.master_id,
+            )
         )
 
     def _create_customer(self):
@@ -2165,9 +2536,33 @@ class OrderCreateSrv:
                 name=self.customer_name,
                 master_id=self.master_id,
             )
+            csm_metrics.APP_CUSTOMER_COUNT.inc()
+            csm_metrics.APP_CUSTOMER_NEW_COUNTER.inc()
+            self.logger.debug(
+                "Создание нового клиента",
+                extra=dict(
+                    customer_id=self.customer.pk,
+                    customer_name=self.customer_name,
+                    customer_phone=self.customer_phone,
+                    event='customer.add.new'
+                )
+            )
+
         else:
             self.customer.name = self.customer_name
             self.customer.save()
+            csm_metrics.APP_CUSTOMER_RETURNING_COUNTER.inc()
+
+            self.logger.debug(
+                "Добавление существующего пользователя",
+                extra=dict(
+                    customer_id=self.customer.pk,
+                    customer_name=self.customer_name,
+                    customer_phone=self.customer_phone,
+                    event='customer.add.new'
+                )
+            )
+
         self.booking.customer = self.customer
         self.booking.save()
 
@@ -2199,23 +2594,33 @@ class OrderCreateSrv:
     @transaction.atomic
     def execute(self):
         """Run commands"""
-        with csm_metrics.APP_BOOKING_DURATION.time():
-            try:
-                self._validate_booking_master()
-                self._get_all_services()
-                self._complete_full_time_length()
+        self._validate_booking_master()
+        self._get_all_services()
+        self._complete_full_time_length()
 
-                self._create_order()
-                self._create_booking()
-                self._create_customer()
+        self._create_order()
+        self._create_booking()
+        self._create_customer()
+        for service in self.serivces:
+            csm_metrics.APP_SERVICE_SOLD_COUNTER.labels(
+                service_id=service.pk,
+                service_name=service.title,
+                service_price=service.price,
+            ).inc()
+        # self._send_notification_on_master()
+        # self._send_order_status_check()
 
-                self._send_notification_on_master()
-                self._send_order_status_check()
-
-                csm_metrics.APP_BOOKINGS_CREATED.inc()
-            except Exception:
-                csm_metrics.APP_BOOKING_ERRORS.inc()
-
+        csm_metrics.APP_ORDERS_TOTAL_COUNTER.inc()
+        csm_metrics.APP_ORDERS_NEW_TODAY.inc()
+        csm_metrics.APP_ORDER_LENGTH_HISTOGRAM.observe(self.summed_num or 60)
+        self.logger.debug(
+            "Заказ успешно создан",
+            extra=dict(
+                order_id=self.order.pk,
+                customer_id=self.customer.pk,
+                event='order.create'
+            )
+        )
         return Response(
             {
                 "message": "Заказ успешно создан",
@@ -2290,27 +2695,26 @@ class FreeBookingSrv:
         """
         Run commands
         """
-        with csm_metrics.APP_FREE_TIMES_DURATION.time():
-            try:
-                if is_retroactive_date(self.date):
-                    self._generate_organization_times()
-                    self.free_times = [{"time": i, "is_free": False} for i in self.times]
-                    return Response(
-                        {
-                            "message": "All times has been received",
-                            "success": True,
-                            "data": self.free_times,
-                        },
-                        status=200,
-                    )
-                
-                self._get_master_bookings()
-                self._generate_organization_times()
-                self._get_master_available_time()
-                self._generate_all_times()
-            finally:
-                csm_metrics.APP_FREE_TIMES_REQUESTS.inc()
-            
+        
+        if is_retroactive_date(self.date):
+            self._generate_organization_times()
+            self.free_times = [
+                {"time": i, "is_free": False} for i in self.times
+            ]
+            return Response(
+                {
+                    "message": "All times has been received",
+                    "success": True,
+                    "data": self.free_times,
+                },
+                status=200,
+            )
+
+        self._get_master_bookings()
+        self._generate_organization_times()
+        self._get_master_available_time()
+        self._generate_all_times()
+       
         return Response(
             {
                 "message": "All times has been received",
@@ -2584,7 +2988,7 @@ class OrderTestCase(APITestCase):
 # File: ./src/tests/__init__.py
 from src.tests.order_tests import OrderTestCase
 
-__all__ = "OrderTestCase",
+__all__ = ("OrderTestCase",)
 
 
 # File: ./src/enums/statuses.py
@@ -2767,14 +3171,15 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from django.urls import include, path
-
-from src.admin import content_management_admin
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
 
+
+from src.admin import content_management_admin
+from src.views.csm_metrics_views import metrics_view
 
 urlpatterns = [
     path("admin/", content_management_admin.urls),
@@ -2789,7 +3194,7 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-    path('', include('django_prometheus.urls'), name='prometheus-django-metrics')
+    path("metrics", metrics_view, name="prometheus-django-metrics"),
 ]
 
 if settings.DEBUG:
@@ -2824,95 +3229,132 @@ __all__ = ("celery_app",)
 # File: ./config/csm_metrics.py
 from prometheus_client import metrics
 
-APP_HTTP_REQUESTS = metrics.Counter(
-    'http_requests_total',
-    'HTTP запросы',
-    labelnames=['method', 'status', 'endpoint', 'api_source']
-)
-APP_ORGANIZATIONS_CREATED = metrics.Counter(
-    'organizations_created_total',
-    'Сколько организаций создано'
-)
-APP_ORGANIZATION_CREATION_DURATION = metrics.Histogram(
-    'organization_creation_duration_seconds',
-    'Время создания организации'
-)
-APP_CUSTOMERS_VERIFIED = metrics.Counter(
-    'customers_verified_total',
-    'Сколько клиентов прошли верификацию'
-)
-APP_CUSTOMER_VERIFY_FAILURES = metrics.Counter(
-    'customer_verify_failures_total',
-    'Ошибки верификации (неправильный номер и т.д.)'
-)
-APP_ORDER_CREATED = metrics.Counter(
-    'order_created_total',
-    "Общее количество заказов"
-)
-APP_ORDER_DURATION = metrics.Histogram(
-    'order_creation_duration_seconds',
-    "Врема создания заказа"
-)
 APP_BOOKINGS_TOTAL = metrics.Gauge(
-    'bookings_total',
-    'Сколько бронирований сейчас в базе данных (состояние)'
+    "bookings_total", "Сколько бронирований сейчас в базе данных (состояние)"
 )
 APP_BOOKINGS_CREATED = metrics.Counter(
-    'bookings_created_total',
-    'Общее количество бронирований'
+    "bookings_created_total", "Общее количество бронирований"
 )
 APP_BOOKING_DURATION = metrics.Histogram(
-    'booking_creation_duration_seconds',
-    'Время создания бронирования'
+    "booking_creation_duration_seconds", "Время создания бронирования"
 )
-APP_BOOKING_ERRORS = metrics.Counter(
-    'booking_errors_total',
-    'Ошибки при бронировании (нет времени, мастер не найден)'
+APP_ORDERS_TOTAL_COUNTER = metrics.Counter(
+    "app_orders_total", "Total number of orders created (increases monotonically)"
 )
-APP_API_KEY_VALID = metrics.Counter(
-    'api_key_valid_total',
-    'Количество валидных API-ключей'
+# 2. Gauge: количество заказов по статусам (может меняться)
+APP_ORDER_STATUS_GAUGE = metrics.Gauge(
+    "app_order_status_count", "Number of orders by status", labelnames=["status"]
 )
-APP_API_KEY_INVALID = metrics.Counter(
-    'api_key_invalid_total',
-    'Количество невалидных API-ключей'
+# 3. Histogram: длительность процедуры (если нужно)
+APP_ORDER_LENGTH_HISTOGRAM = metrics.Histogram(
+    "app_order_length_minutes",
+    "Length of order in minutes",
+    buckets=(15, 30, 60, 90, 120, 180),  # настрой под свои услуги
 )
-APP_FREE_TIMES_REQUESTS = metrics.Counter(
-    'free_times_requests_total',
-    'Сколько раз запрашивали свободное время'
+# 4. Gauge: новых заказов за день (если хочешь "сегодня")
+APP_ORDERS_NEW_TODAY = metrics.Gauge(
+    "app_orders_new_today", "Number of new orders created today (resets at 00:00)"
 )
-
-APP_FREE_TIMES_DURATION = metrics.Histogram(
-    'free_times_duration_seconds',
-    'Время подбора свободного времени'
+APP_ORGANIZATION_GAUGE = metrics.Gauge(
+    "organization_counter", "Количество салонов", labelnames=["organization_type"]
 )
-
-APP_MASTERS_VERIFIED = metrics.Counter(
-    'masters_verified_total',
-    'Сколько мастеров прошли верификацию'
+APP_MASTER_TOTAL_GAUGE = metrics.Gauge("app_master_total", "Общее количество мастеров")
+APP_CUSTOMER_COUNT = metrics.Counter(
+    "app_customer_total", "сколько всего клиентов создано"
 )
-
-APP_MASTER_VERIFY_FAILURES = metrics.Counter(
-    'master_verify_failures_total',
-    'Ошибки верификации мастеров'
+APP_CUSTOMER_GAUGE = metrics.Gauge("app_customer_gauge", "текущее количество клиентов")
+APP_CUSTOMER_TODAY_GAUGE = metrics.Gauge(
+    "app_customers_new_today", "текущее количество клиентов"
 )
-
-APP_CELERY_TASKS_STARTED = metrics.Counter(
-    'celery_tasks_started_total',
-    'Задачи Celery: запущены'
+APP_CUSTOMER_NEW_COUNTER = metrics.Counter(
+    "app_customers_new_total", "Total number of new customers (first order)"
 )
 
-APP_CELERY_TASKS_SUCCEEDED = metrics.Counter(
-    'celery_tasks_succeeded_total',
-    'Задачи Celery: успешны'
+APP_CUSTOMER_RETURNING_COUNTER = metrics.Counter(
+    "app_customers_returning_total",
+    "Total number of returning customers (repeat orders)",
+)
+APP_AVG_PROCEDURE_TIME_GAUGE = metrics.Gauge(
+    "app_avg_procedure_time", "Средняя длительность процедур"
+)
+APP_AVG_ORDER_PRICE_GAUGE = metrics.Gauge(
+    "app_avg_order_price", "Средняя длительность процедур"
+)
+APP_REQUEST_DURATION = metrics.Histogram(
+    "app_request_duration",
+    "Request duration (latency)",
+    buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0),  # настрой под себя
+    labelnames=["method", "view", "status"],
+)
+APP_SERVICE_SOLD_COUNTER = metrics.Counter(
+    "app_service_sold_total",
+    "Total number of times a service was ordered",
+    labelnames=["service_id", "service_name", "service_price"],
 )
 
-APP_CELERY_TASKS_FAILED = metrics.Counter(
-    'celery_tasks_failed_total',
-    'Задачи Celery: упали'
+APP_DAU_GAUGE = metrics.Gauge("app_dau_count", "DAU")
+APP_MAU_GAUGE = metrics.Gauge("app_mau_count", "MAU")
+APP_SERVICE_REVENUE_GAUGE = metrics.Gauge(
+    'app_service_revenue',
+    "Service reneuew",
+    labelnames=['title']
 )
 
+# File: ./config/middlewares.py
+import time
+import uuid
 
+from rest_framework.request import Request
+
+from config import csm_metrics
+from src.utils.logger import RequestLogger
+
+class RequestTimingMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        start_time = time.time()
+
+        response = self.get_response(request)
+
+        duration = time.time() - start_time
+
+        # Определяем view (если возможно)
+        view_name = getattr(request.resolver_match, "url_name", "unknown")
+        method = request.method
+        status = response.status_code
+
+        csm_metrics.APP_REQUEST_DURATION.labels(
+            method=method, view=view_name, status=status
+        ).observe(duration)
+
+        return response
+
+
+class RequestIDMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request: Request):
+        request_id = request.META.get("HTTP_X_REQUEST_ID") or str(uuid.uuid4())
+        logger = RequestLogger(request_id=request_id)
+
+        setattr(request, 'request_id', request_id)
+        setattr(request, 'logger', logger)
+        
+        logger.info("Начало HTTP-запроса", extra={
+            "method": request.method,
+            "path": request.path,
+        })
+
+        response = self.get_response(request)
+
+        logger.info("Завершение HTTP-запроса", extra={
+            "status_code": response.status_code
+        })
+
+        return response
 
 # File: ./config/celery.py
 """
@@ -2922,7 +3364,6 @@ Celery in project
 import os
 from celery import Celery
 from dotenv import load_dotenv
-from datetime import timedelta
 
 load_dotenv()
 
@@ -2934,11 +3375,12 @@ app.autodiscover_tasks()
 
 
 app.conf.beat_schedule = {
-    'update-bookings-gauge': {
-        'task': 'src.tasks.csm_metrics_tasks.update_metrics',  # путь к твоей задаче
-        'schedule': 10.0,  # каждые 10 секунд
+    "update-bookings-gauge": {
+        "task": "src.tasks.csm_metrics_tasks.update_metrics",  # путь к твоей задаче
+        "schedule": 10.0,  # каждые 10 секунд
     },
 }
+
 
 # File: ./config/settings.py
 import os
@@ -2974,7 +3416,8 @@ INSTALLED_APPS = [
     *ROOT_APPS,
 ]
 MIDDLEWARE = [
-    'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "config.middlewares.RequestTimingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -2982,8 +3425,10 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'django_prometheus.middleware.PrometheusAfterMiddleware',
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
+    "config.middlewares.RequestIDMiddleware",
 
+    
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -3009,16 +3454,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("POSTGRES_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT"),
     },
-}
-DATABASES["default"] = {
-    "ENGINE": "django.db.backends.sqlite3",
-    "NAME": BASE_DIR / "db.sqlite3",
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -3048,7 +3489,6 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-STATIC_DIRS = [os.path.join(BASE_DIR, "static")]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -3076,28 +3516,36 @@ SPECTACULAR_SETTINGS = {
     "REDOC_DIST": "SIDECAR",
 }
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "main": {
-            'format': '[%(asctime)s] %(levelname)s %(message)s',
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-            "style": "%",
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'main': {
+            'format': '[%(asctime)s] %(levelname)s %(request_id)s %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'json': {
+            '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            'format': '%(asctime)s %(name)s %(levelname)s %(request_id)s %(message)s',
+            # Позволяет любые extra-поля
+            'reserved_attrs': [],
+            # Можно переименовать стандартные поля (опционально)
+            'rename_fields': {
+                'levelname': 'level',
+                'name': 'logger',
+            },
         },
     },
-    "handlers": {
-        "file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            'filename': os.path.join(LOGGING_DIR, 'django.log'),
-            "formatter": "main",
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'main',
         },
     },
-    "loggers": {
-        "django": {
-            "handlers": ["file"],
-            "level": "INFO",
-            "propagate": True,
+    'loggers': {
+        'src': {
+            'handlers': ['console'],
+            'level': 'INFO',
         },
     },
 }
@@ -3127,7 +3575,6 @@ FIXMASTER_CLIENT_BOT_TOKEN = os.getenv("FIXMASTER_CLIENT_BOT_TOKEN")
 FIXMASTER_MASTER_BOT_TOKEN = os.getenv("FIXMASTER_MASTER_BOT_TOKEN")
 FIXMASTER_MODERATOR_BOT_TOKEN = os.getenv("FIXMASTER_MODERATOR_BOT_TOKEN")
 FIXMASTER_ORGANIZATION_BOT_TOKEN = os.getenv("FIXMASTER_ORGANIZATION_BOT_TOKEN")
-
 
 
 # File: ./config/wsgi.py
@@ -3821,12 +4268,6 @@ client_bot = TeleBot(settings.FIXMASTER_CLIENT_BOT_TOKEN)
 master_bot = TeleBot(settings.FIXMASTER_MASTER_BOT_TOKEN)
 organization_bot = TeleBot(settings.FIXMASTER_ORGANIZATION_BOT_TOKEN)
 moderator_bot = TeleBot(settings.FIXMASTER_MODERATOR_BOT_TOKEN)
-print(
-    settings.FIXMASTER_MODERATOR_BOT_TOKEN,
-    settings.FIXMASTER_ORGANIZATION_BOT_TOKEN,
-    settings.FIXMASTER_MASTER_BOT_TOKEN,
-    settings.FIXMASTER_CLIENT_BOT_TOKEN,
-)
 
 
 # File: ./bot/services.py
@@ -4000,9 +4441,9 @@ class BotOrganizationCreate:
     @atomic()
     def execute(self):
         self._create_organization()
-        self._send_notification()
+        # self._send_notification()
         self._create_gallery()
-        self.organization['id'] = self.organization_obj.pk
+        self.organization["id"] = self.organization_obj.pk
         return Response(
             {
                 "message": "Вы успешно авторизовались\nВы будете получать уведомления о брони",
@@ -4154,7 +4595,6 @@ class BotVerifyOrganization:
 class BotGetOrganizationByTelegramId:
     def __init__(self, organization_data: dict):
         self.telegram_id = organization_data["telegram_id"]
-        print(dict_get(self.telegram_id), "TEST")
 
     def get_organization(self):
         self.organization = Organization.objects.filter(
@@ -4246,7 +4686,7 @@ class MasterCreateSrv:
                 "message": "Мастер успешно создан",
                 "success": True,
                 "data": self.master.code,
-                "master_id": self.master.pk
+                "master_id": self.master.pk,
             },
             status=201,
         )
@@ -4314,13 +4754,12 @@ class MasterServiceCreateSrv:
         self.create_service()
         return Response(
             {
-                "message": "Запрос прошел успешно", 
-                "success": True, 
+                "message": "Запрос прошел успешно",
+                "success": True,
                 "data": {},
-                "service_id":self.service.pk
+                "service_id": self.service.pk,
             },
             status=201,
-
         )
 
 
@@ -4398,7 +4837,6 @@ class MasterVerifySrv:
 
     def get_master_by_code(self):
         self.master = Master.objects.filter(code=self.code).first()
-        print(self.master)
 
     def check_master(self):
         if self.master:
@@ -4441,7 +4879,6 @@ class MasterCustomers:
 
     def get_master(self):
         self.master = Master.objects.filter(telegram_id=self.telegram_id).first()
-        print(self.master)
         if not self.master:
             raise ValidationError(
                 {
@@ -4453,7 +4890,6 @@ class MasterCustomers:
 
     def get_master_clients(self):
         self.customers = self.master.customer_set.all().values("id", "username")
-        print(self.customers)
 
     def execute(self):
         self.get_master()
@@ -4520,7 +4956,6 @@ class CustomerNextSessionSrv:
 
     def get_client(self):
         self.customer = Customer.objects.filter(telegram_id=self.telegram_id).first()
-        print(self.customer)
         if not self.customer:
             raise ValidationError(
                 {
@@ -4635,6 +5070,7 @@ class CheckCustomerSrv:
 # File: ./nofication_service/main.py
 # Запуск консюмера
 
+
 # File: ./nofication_service/__init__.py
 
 
@@ -4649,13 +5085,12 @@ load_dotenv("notigy.env")
 RABBIT_MQ_CONNECTION_URL = os.getenv("RABBIT_MQ_CONNECTION_URL")
 RABBIT_MQ_CHANNEL_NAME = os.getenv("RABBIT_MQ_CHANNEL_NAME")
 
-CLIENT_BOT_TOKEN=os.getenv("CLIENT_BOT_TOKEN")
-MASTER_BOT_TOKEN=os.getenv("MASTER_BOT_TOKEN")
-ORGANIZATION_BOT_TOKEN=os.getenv("ORGANIZATION_BOT_TOKEN")
-MODERATOR_BOT_TOKEN=os.getenv("MODERATOR_BOT_TOKEN")
+CLIENT_BOT_TOKEN = os.getenv("CLIENT_BOT_TOKEN")
+MASTER_BOT_TOKEN = os.getenv("MASTER_BOT_TOKEN")
+ORGANIZATION_BOT_TOKEN = os.getenv("ORGANIZATION_BOT_TOKEN")
+MODERATOR_BOT_TOKEN = os.getenv("MODERATOR_BOT_TOKEN")
 
 MONGO_DB_CONNECTION_URL = os.getenv("MONGO_DB_CONNECTION_URL")
-
 
 
 # File: ./nofication_service/src/models.py
@@ -4668,14 +5103,17 @@ from datetime import datetime
 class BaseUser:
     telegram_id: int
 
+
 @dataclass
 class Service:
     title: str
 
-@dataclass 
+
+@dataclass
 class Client(BaseUser):
     name: str
     phone_number: str
+
 
 @dataclass
 class Master(BaseUser):
@@ -4683,15 +5121,18 @@ class Master(BaseUser):
     specialization: str
     access_code: str
 
+
 @dataclass
 class Organization(BaseUser):
     name: str
     phone_number: str
     url: str
 
+
 @dataclass
 class Moderator(BaseUser):
     pass
+
 
 @dataclass
 class Booking:
@@ -4703,17 +5144,18 @@ class Booking:
     time: datetime.time
 
 
-
 # File: ./nofication_service/src/__init__.py
 
 
 # File: ./nofication_service/src/interfaces.py
 from abc import abstractmethod, ABC
 
+
 class BotRepository(ABC):
     @abstractmethod
-    async def send(self, chat_id: int, text: str, reply_markup = None ) -> None:
+    async def send(self, chat_id: int, text: str, reply_markup=None) -> None:
         pass
+
 
 # File: ./nofication_service/src/repository/telegram_bots.py
 from aiogram import types as aiotypes
@@ -4726,20 +5168,22 @@ from aiogram import Bot
 from nofication_service.src.interfaces import BotRepository
 
 
-
 class TeleBotRepository(BotRepository):
     def __init__(self, token: str):
         self.token = token
         self.bot = TeleBot(self.token)
 
     async def send(
-        self, 
-        chat_id: int, 
-        text: str, 
-        reply_murkup:  teletypes.ReplyKeyboardMarkup | teletypes.InlineKeyboardButton | None = None
+        self,
+        chat_id: int,
+        text: str,
+        reply_murkup: teletypes.ReplyKeyboardMarkup
+        | teletypes.InlineKeyboardButton
+        | None = None,
     ) -> None:
         """Отравка сообщения к tguser через telebot"""
         self.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_murkup)
+
 
 class AiogramBotRepository(BotRepository):
     def __init__(self, token: str):
@@ -4747,23 +5191,29 @@ class AiogramBotRepository(BotRepository):
         self.bot = Bot(token=self.token)
 
     async def send(
-        self, 
-        chat_id: int, 
-        text: str, 
-        reply_markup: aiotypes.ReplyKeyboardMarkup | aiotypes.InlineKeyboardMarkup | None = None
+        self,
+        chat_id: int,
+        text: str,
+        reply_markup: aiotypes.ReplyKeyboardMarkup
+        | aiotypes.InlineKeyboardMarkup
+        | None = None,
     ) -> None:
         """Отравка сообщения к tguser через aiogram"""
-        await self.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
-    
+        await self.bot.send_message(
+            chat_id=chat_id, text=text, reply_markup=reply_markup
+        )
 
 
 # File: ./nofication_service/src/services/telegram_notify_servcies.py
-
-
-from nofication_service.src.models import Booking, Client, Organization, Moderator, Master
-from nofication_service.src.messages.telegram import MasterMessages, ModeratorMessages, OrganizationMessages, ClientMessages
+from nofication_service.src.models import (
+    Booking,
+)
+from nofication_service.src.messages.telegram import (
+    MasterMessages,
+)
 
 from nofication_service.src.interfaces import BotRepository
+
 
 class NewBookingNotifyService:
     def __init__(self, bot: BotRepository, booking: Booking):
@@ -4786,9 +5236,9 @@ class NewBookingNotifyService:
             client_phone=self.client_phone,
             date=self.date,
             time=self.time,
-            service=self.services
+            service=self.services,
         )
-        
+
         self.bot_repo.send(chat_id=self.master_id, text=message_text)
 
 
@@ -4796,23 +5246,25 @@ class NewBookingNotifyService:
 from typing import ClassVar
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class ModeratorMessages:
     """Сообщения для модераторов"""
-    
+
     NEW_VERIFICATION_REQUEST: ClassVar[str] = (
         "🔔 Новая заявка на верификацию\n"
         "Организация: {org_name}\n"
         "Телефон: {phone}\n"
         "Просмотреть: {admin_link}"
     )
-    
+
     REPORT_READY: ClassVar[str] = (
         "📊 Отчет за неделю готов\n"
         "Новых организаций: {new_orgs}\n"
         "Жалоб: {complaints}\n"
         "Проблемных броней: {issues}"
     )
+
 
 # File: ./nofication_service/src/messages/telegram/__init__.py
 from .client import ClientMessages
@@ -4822,14 +5274,16 @@ from .organization import OrganizationMessages
 
 __all__ = (ClientMessages, MasterMessages, ModeratorMessages, OrganizationMessages)
 
+
 # File: ./nofication_service/src/messages/telegram/organization.py
 from typing import ClassVar
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class OrganizationMessages:
     """Сообщения для организаций"""
-    
+
     VERIFICATION_SUCCESS: ClassVar[str] = (
         "🎉 Ваша организация верифицирована!\n"
         "Теперь вы можете:\n"
@@ -4837,14 +5291,13 @@ class OrganizationMessages:
         "- Настраивать услуги\n"
         "- Принимать записи"
     )
-    
+
     NEW_MASTER_JOINED: ClassVar[str] = (
         "👋 Новый мастер в команде!\n"
         "Имя: {master_name}\n"
         "Специализация: {specialization}\n"
         "Код для мастера: {access_code}"
     )
-    
 
 
 # File: ./nofication_service/src/messages/telegram/client.py
@@ -4852,11 +5305,10 @@ from typing import ClassVar
 from dataclasses import dataclass
 
 
-
 @dataclass(frozen=True)
 class ClientMessages:
     """Сообщения для клиентов"""
-    
+
     BOOKING_CONFIRMED: ClassVar[str] = (
         "✅ Ваша запись подтверждена!\n"
         "Мастер: {master_name}\n"
@@ -4864,11 +5316,9 @@ class ClientMessages:
         "Время: {time}\n"
         "Адрес: {address}"
     )
-    
+
     PAYMENT_SUCCESS: ClassVar[str] = (
-        "Оплата прошла успешно! 💰\n"
-        "Сумма: {amount} ₽\n"
-        "Ссылка на чек: {receipt_url}"
+        "Оплата прошла успешно! 💰\nСумма: {amount} ₽\nСсылка на чек: {receipt_url}"
     )
 
     REMINDER_24H: ClassVar[str] = (
@@ -4878,22 +5328,18 @@ class ClientMessages:
     )
 
 
-
-
-
 # Пример использования
 
 
 # File: ./nofication_service/src/messages/telegram/master.py
-from typing import  ClassVar
+from typing import ClassVar
 from dataclasses import dataclass
-
 
 
 @dataclass(frozen=True)
 class MasterMessages:
     """Сообщения для мастеров"""
-    
+
     NEW_BOOKING: ClassVar[str] = (
         "🆕 Новая запись!\n"
         "Клиент: {client_name}\n"
@@ -4902,13 +5348,12 @@ class MasterMessages:
         "Время: {time}\n"
         "Услуга: {service}"
     )
-    
+
     SCHEDULE_CHANGE: ClassVar[str] = (
         "⚠️ Изменение расписания!\n"
         "Новое время работы: {schedule} \n"
         "Обновите свои доступные слоты"
     )
-
 
 
 # File: ./nofication_service/tests/conftest.py
@@ -4922,108 +5367,30 @@ import pytest
 
 import datetime
 from nofication_service.src.interfaces import BotRepository
-from nofication_service.src.services.telegram_notify_servcies import NewBookingNotifyService
+from nofication_service.src.services.telegram_notify_servcies import (
+    NewBookingNotifyService,
+)
 from nofication_service.src.models import Booking, Client, Master, Service
 
+
 class TestBot(BotRepository):
-    def send(self, chat_id, text, reply_markup = None):
+    def send(self, chat_id, text, reply_markup=None):
         return text
-    
+
+
 @pytest.mark.asyncio
 async def test_new_booking_notify_service():
     bot = TestBot()
-    
+
     booking = Booking(
-        client=Client(
-            1, "nariman", "89232"
-        ),
-        master=Master(
-            2, "name", "se","23d"
-        ),
+        client=Client(1, "nariman", "89232"),
+        master=Master(2, "name", "se", "23d"),
         services=[Service("test")],
         address="Test",
-        date=datetime.datetime(year=2025,day=21, month=1),
-        time=datetime.datetime(year=2025,day=21, month=1)
+        date=datetime.datetime(year=2025, day=21, month=1),
+        time=datetime.datetime(year=2025, day=21, month=1),
     )
-    new_booking = NewBookingNotifyService(
-        bot,
-        booking
-    )
+    new_booking = NewBookingNotifyService(bot, booking)
     new_booking.execute()
 
-
-# File: ./nginx/develop.conf
-upstream backend {
-    server app:8000;
-}
-upstream frontend {
-    server localhost:3030;
-}
-server {
-    listen 80;
-    server_name backend.localhost;
-
-    location / {
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-
-
-        location /api/ {
-            proxy_pass http://backend/api/;
-        }
-        location /bot-api/ {
-            proxy_pass http://backend/bot-api/;
-        }
-        location /admin/ {
-            proxy_pass http://backend/admin/;
-        }
-    }
-
-    location /static/ {
-        alias /app/static/;
-    }
-    location /media/ {
-        alias /app/media/;
-    }
-}
-
-# File: ./nginx/production.conf
-upstream backend {
-    server localhost:8000;
-}
-upstream frontend {
-    server localhost:3030;
-}
-server {
-    listen 80;
-    server_name backend.localhost;
-
-    location / {
-        index index.html;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-
-
-        location /api/ {
-            proxy_pass http://backend/api/;
-        }
-        location /bot-api/ {
-            proxy_pass http://backend/bot-api/;
-        }
-        location /admin/ {
-            proxy_pass http://backend/admin/;
-        }
-    }
-
-    location /static/ {
-        alias /app/static/;
-    }
-    location /media/ {
-        alias /app/media/;
-    }
-}
 

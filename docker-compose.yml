@@ -1,7 +1,26 @@
-version: '3'
+volumes:
+  static:
+  media:
+  redis:
+  grafana-storage:
+  loki-data:    
+  pg-data-fixmaster: 
+
+networks:
+  net:
+    driver: bridge
 
 services:
-  # Redis
+  db:
+    image: postgres
+    restart: always
+    volumes:
+      - pg-data-fixmaster:/var/lib/postgresql@16/data
+    env_file:
+      - .env
+    networks:
+      - net
+    
   redis:
     image: 'redis:alpine'
     restart: always
@@ -9,63 +28,174 @@ services:
     container_name: 'Redis'
     volumes:
       - redis:/data
+    networks:
+      - net
+
+  migrate:
+    build: .
+    command: poetry run python manage.py migrate
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+    networks:
+      - net
     
-  # Django
+  collectstatic:
+    build: .
+    command: poetry run python manage.py collectstatic --no-input
+    volumes:
+      - static:/app/static
+      - media:/app/media
+    networks:
+      - net
+    env_file:
+      - .env
+
   app:
     build: .
     restart: always
     container_name: 'Backend'
-    command: /bin/bash -c "poetry run python manage.py collectstatic --noinput && poetry run python manage.py migrate && poetry run uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 4"
+    command: poetry run uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 4
     volumes:
-      - app/:/app
+      - ./app:/app
       - static:/app/static
+
       - media:/app/media
     env_file:
       - .env
     depends_on:
       - redis
+      - db
     ports:
       - 8000:8000
+    networks:
+      - net
 
-  # Celery
-  celery:
+  celery-worker:
     build: .
-    command:  celery -A config worker -l info
-    env_file:
-      - .env
+    command: >
+      sh -c "
+      sleep 10 &&
+      poetry run celery -A config worker -l INFO
+      "
+    volumes:
+      - ./app:/app
     depends_on:
       - app
       - redis
-    restart: always
-    volumes:
-      - static:/app/static
-      - media:/app/media
-    network_mode: host
+      - db
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: on-failure
+    networks:
+      - net
+    env_file:
+      - .env
 
-  # Nginx
+  celery-beat:
+    build: .
+    command: >
+      sh -c "
+      sleep 15 &&
+      poetry run celery -A config beat -l INFO
+      "
+    depends_on:
+      - app
+      - redis
+      - db
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: on-failure
+    volumes:
+      - ./app:/app
+    networks:
+      - net
+    env_file:
+      - .env
+
+  
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./conf/alertmanager/config.yaml:/etc/alertmanager/config.yaml
+    command:
+      - '--config.file=/etc/alertmanager/config.yaml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - net
+
+  
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./conf/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ./conf/prometheus/alerts.yaml:/etc/prometheus/alerts.yaml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - net
+
+  loki: 
+    image: grafana/loki:2.8.4  
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    volumes:
+      - ./conf/loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki  
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - net
+      
+  promtail:
+    image: grafana/promtail:2.8.4
+    container_name: promtail
+    volumes:
+      - ./app/logs:/var/log/django
+      - ./conf/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    depends_on:
+      - loki
+    networks:
+      - net
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - net
+  
   nginx:
     image: nginx:latest
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/default.template:/etc/nginx/conf.d/default.conf.template
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /home/www:/home/www
       - static:/app/static
       - media:/app/media
-    command: bash -c "envsubst '$${HOST}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
-    env_file:
-      - .env
-    environment:
-      - HOST=${HOST}
+      - ./conf/nginx/develop.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - app
-    network_mode: host
-
-volumes:
-  static:
-  media:
-  redis:
+    networks:
+      - net
 
 

@@ -168,7 +168,7 @@ class BotOrganizationCreate:
     @atomic()
     def execute(self):
         self._create_organization()
-        self._send_notification()
+        # self._send_notification()
         self._create_gallery()
         self.organization["id"] = self.organization_obj.pk
         return Response(
@@ -322,7 +322,6 @@ class BotVerifyOrganization:
 class BotGetOrganizationByTelegramId:
     def __init__(self, organization_data: dict):
         self.telegram_id = organization_data["telegram_id"]
-        print(dict_get(self.telegram_id), "TEST")
 
     def get_organization(self):
         self.organization = Organization.objects.filter(
@@ -565,7 +564,6 @@ class MasterVerifySrv:
 
     def get_master_by_code(self):
         self.master = Master.objects.filter(code=self.code).first()
-        print(self.master)
 
     def check_master(self):
         if self.master:
@@ -608,7 +606,6 @@ class MasterCustomers:
 
     def get_master(self):
         self.master = Master.objects.filter(telegram_id=self.telegram_id).first()
-        print(self.master)
         if not self.master:
             raise ValidationError(
                 {
@@ -620,7 +617,6 @@ class MasterCustomers:
 
     def get_master_clients(self):
         self.customers = self.master.customer_set.all().values("id", "username")
-        print(self.customers)
 
     def execute(self):
         self.get_master()
@@ -687,7 +683,6 @@ class CustomerNextSessionSrv:
 
     def get_client(self):
         self.customer = Customer.objects.filter(telegram_id=self.telegram_id).first()
-        print(self.customer)
         if not self.customer:
             raise ValidationError(
                 {
