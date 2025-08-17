@@ -33,6 +33,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "config.middlewares.RequestTimingMiddleware",
+    "config.middlewares.RequestIDMiddleware",
+    "config.middlewares.ErrorHandlingMiddleware",
+    "config.middlewares.UncaughtExceptionMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -41,7 +44,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
-    "config.middlewares.RequestIDMiddleware",
+    
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -172,9 +175,9 @@ LOGGING = {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "main",
+            "formatter": "main",  
         },
-        "file": {  # ✅ Добавлен handler 'file'
+        "file": {  
             "level": "DEBUG",
             "()": "logging.handlers.TimedRotatingFileHandler",
             "filename": os.path.join(LOGGING_DIR, "django.log"),
@@ -182,7 +185,6 @@ LOGGING = {
             "when": "midnight",
             "interval": 1,
             "backupCount": 7,
-            "formatter": "json",
             "encoding": "utf-8",
         },
     },
@@ -190,6 +192,11 @@ LOGGING = {
         "src": {
             "handlers": ["console", "file"],
             "level": "DEBUG",
+        },
+        'src.errors': { 
+            'handlers': ['console', 'file'],
+            'level': 'ERROR',
+            'propagate': False,
         },
     },
 }

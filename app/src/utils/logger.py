@@ -22,3 +22,6 @@ class RequestLogger:
 
     def debug(self, msg, **kwargs):
         self._log("debug", msg, **kwargs)
+
+    def critical(self, msg, **kwargs):
+        self._log("critical", msg, **kwargs)

@@ -204,10 +204,10 @@ class OrderCreateSrv:
         ).total_seconds()
 
         change_status_order.apply_async(
-            (self.order.pk, "in-progress"), countdown=change_in_progress_time
+            (self.order.pk, "in-progress", self.logger.request_id), countdown=change_in_progress_time
         )
         change_status_order.apply_async(
-            (self.order.pk, "done"), countdown=change_done_time
+            (self.order.pk, "done", self.logger.request_id), countdown=change_done_time
         )
 
     @transaction.atomic
@@ -226,12 +226,14 @@ class OrderCreateSrv:
                 service_name=service.title,
                 service_price=service.price,
             ).inc()
-        # self._send_notification_on_master()
-        # self._send_order_status_check()
+
+        self._send_notification_on_master()
+        self._send_order_status_check()
 
         csm_metrics.APP_ORDERS_TOTAL_COUNTER.inc()
         csm_metrics.APP_ORDERS_NEW_TODAY.inc()
         csm_metrics.APP_ORDER_LENGTH_HISTOGRAM.observe(self.summed_num or 60)
+
         self.logger.debug(
             "Заказ успешно создан",
             extra=dict(

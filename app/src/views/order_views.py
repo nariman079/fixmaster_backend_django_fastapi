@@ -56,3 +56,7 @@ class FreeBookingView(APIView):
             },
             status=422,
         )
+
+def test_view(request):
+    import non_existent_module  # ImportError
+    return Response({"success": True})
