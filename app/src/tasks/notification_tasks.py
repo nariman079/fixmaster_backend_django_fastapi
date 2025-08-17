@@ -5,6 +5,7 @@ from bot.config import master_bot, moderator_bot, organization_bot
 from src.models import Master, Organization, Moderator, Customer
 from src.utils.logger import RequestLogger
 
+
 def callback_verify_true_organization(organization_id: int) -> str:
     return f"organization_verify_true_{organization_id}"
 
@@ -27,22 +28,25 @@ def send_message_telegram_on_master(
     client_phone_number: str,
     booking_date: str,
     booking_time: str,
-    request_id: str 
+    request_id: str,
 ):
     """
     Отправка сообщения Мастеру о бронировании
     """
-    
+
     logger = RequestLogger(request_id)
-    
+
     try:
         master = Master.objects.get(id=master_id)
-        logger.info("Началась отправка телеграм сообщения", extra={
-            "master_id": master.pk,
-            "master_telegram_id": master.telegram_id,
-            'event': 'notify.send.telegram'
-        })
-        
+        logger.info(
+            "Началась отправка телеграм сообщения",
+            extra={
+                "master_id": master.pk,
+                "master_telegram_id": master.telegram_id,
+                "event": "notify.send.telegram",
+            },
+        )
+
         text = (
             f"У вас новая бронь\n"
             f"Клиент: {client_phone_number}\n"
@@ -50,24 +54,23 @@ def send_message_telegram_on_master(
             f"Время: {booking_time}"
         )
 
-    
         master_bot.send_message(chat_id=master.telegram_id, text=text)
         logger.debug(
             "Сообщение о бронировании успешно отправлено",
             extra={
                 "master_id": master.pk,
                 "master_telegram_id": master.telegram_id,
-                'event': 'notify.send.telegram'
-            }
+                "event": "notify.send.telegram",
+            },
         )
-    except Exception as error: 
+    except Exception as error:
         logger.error(
             "Ошибка отправки телеграм сообщения",
             extra={
-                'error_message': f"{error}",
+                "error_message": f"{error}",
                 "master_id": master.telegram_id,
-                'event': 'notify.send.telegram'
-            }
+                "event": "notify.send.telegram",
+            },
         )
 
 

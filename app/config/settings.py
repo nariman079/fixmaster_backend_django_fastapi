@@ -42,8 +42,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
     "config.middlewares.RequestIDMiddleware",
-
-    
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -131,51 +129,67 @@ SPECTACULAR_SETTINGS = {
     "REDOC_DIST": "SIDECAR",
 }
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'main': {
-            'format': '[%(asctime)s] %(levelname)s %(request_id)s %(message)s',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "main": {
+            "format": "[%(asctime)s] %(levelname)s %(request_id)s %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
-        'json': {
-            '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
-            'format': '%(asctime)s %(name)s %(levelname)s %(request_id)s %(message)s',
-            'reserved_attrs': [
-                'asctime', 'name', 'levelname',
-                'exc_info', 'exc_text', 'stack_info', 'created', 'msecs',
-                'relativeCreated', 'thread', 'threadName', 'processName', 'process',
-                'pathname', 'filename', 'module', 'funcName', 'lineno', 'args',
-                'msg', 'levelno'
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(name)s %(levelname)s %(request_id)s %(message)s",
+            "reserved_attrs": [
+                "asctime",
+                "name",
+                "levelname",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "created",
+                "msecs",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "processName",
+                "process",
+                "pathname",
+                "filename",
+                "module",
+                "funcName",
+                "lineno",
+                "args",
+                "msg",
+                "levelno",
             ],
-            'rename_fields': {
-                'levelname': 'level',
-                'name': 'logger',
+            "rename_fields": {
+                "levelname": "level",
+                "name": "logger",
             },
         },
     },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'main',
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "main",
         },
-        'file': {  # ✅ Добавлен handler 'file'
-            'level': 'DEBUG',
-            '()': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': os.path.join(LOGGING_DIR, 'django.log'),
-            'formatter': 'json',
-            'when': 'midnight',
-            'interval': 1,           
-            'backupCount': 7,        
-            'formatter': 'json',
-            'encoding': 'utf-8',
+        "file": {  # ✅ Добавлен handler 'file'
+            "level": "DEBUG",
+            "()": "logging.handlers.TimedRotatingFileHandler",
+            "filename": os.path.join(LOGGING_DIR, "django.log"),
+            "formatter": "json",
+            "when": "midnight",
+            "interval": 1,
+            "backupCount": 7,
+            "formatter": "json",
+            "encoding": "utf-8",
         },
     },
-    'loggers': {
-        'src': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+    "loggers": {
+        "src": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
         },
     },
 }

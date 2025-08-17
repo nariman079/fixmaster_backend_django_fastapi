@@ -18,10 +18,8 @@ def metrics_view(request):
                 organization_type=organization_type
             ).set(count)
 
-        for title, total_income in dict_get('income_by_services').items():
-            csm_metrics.APP_SERVICE_REVENUE_GAUGE.labels(
-                title=title
-            ).set(total_income)
+        for title, total_income in dict_get("income_by_services").items():
+            csm_metrics.APP_SERVICE_REVENUE_GAUGE.labels(title=title).set(total_income)
 
         counts = dict_get("counts")
         master_count = counts.get("masters")

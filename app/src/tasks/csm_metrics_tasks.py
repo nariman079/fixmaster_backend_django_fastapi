@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from celery import shared_task
 from django.utils import timezone
-from django.db.models import Avg, Count, F, Q
+from django.db.models import Avg
 
 from config.settings import dict_set
 
@@ -12,7 +12,6 @@ from src.models import (
     OrganizationType,
     Organization,
     Customer,
-    Service,
 )
 from src.enums.statuses import CHOICES_STATUS
 
@@ -75,13 +74,17 @@ def update_metrics():
         )
 
         dict_set("point_data", {"dau": dau, "mau": mau})
-        completed_orders = Order.objects.filter(status="done").prefetch_related('services')
+        completed_orders = Order.objects.filter(status="done").prefetch_related(
+            "services"
+        )
         income_by_service = defaultdict(int)
         for order in completed_orders:
             for service in order.services.all():
                 income_by_service[service.title] += service.price
-     
-        income_by_services = {title: income for title, income in income_by_service.items() if income > 0}
+
+        income_by_services = {
+            title: income for title, income in income_by_service.items() if income > 0
+        }
 
         dict_set("income_by_services", income_by_services)
 

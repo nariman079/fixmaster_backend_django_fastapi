@@ -5,11 +5,8 @@
 
 import asyncio
 import aiohttp
-import json
 import random
 from datetime import datetime, timedelta
-from dateutil import rrule
-from time import sleep
 
 # --- Configuration ---
 BASE_URL = "http://localhost:8000"  # Replace with your API base URL
@@ -253,7 +250,7 @@ async def create_random_bookings(session, master_ids, service_map, num_bookings=
     # This is a simplification. Ideally, you'd fetch org details once.
     # For now, let's assume a standard working day for simplicity in time selection.
     # A more robust way would be to fetch the org and parse its time_begin/end.
-  
+
     for i in range(num_bookings):
         master_id = random.choice(master_ids)
         available_service_ids = service_map.get(master_id, [])
@@ -308,9 +305,7 @@ async def create_random_bookings(session, master_ids, service_map, num_bookings=
             }
             try:
                 # Use json payload for POST
-                async with session.post(
-                    url, json=data, headers=HEADERS_JSON
-                ) as resp:
+                async with session.post(url, json=data, headers=HEADERS_JSON) as resp:
                     if resp.status in (200, 201):
                         response_data = await resp.json()
                         if response_data.get("success"):
@@ -350,12 +345,10 @@ async def create_random_bookings(session, master_ids, service_map, num_bookings=
             print(f"Failed to create Booking {i + 1} after retries.")
 
 
-
 # --- Main Execution ---
 async def main():
     timeout = aiohttp.ClientTimeout(total=60)  # 60 seconds timeout
     async with aiohttp.ClientSession(timeout=timeout) as session:
-
         print("--- Starting Data Population ---")
         print("\n1. Creating Organization Type...")
         print("\n2. Creating Organization...")
@@ -385,7 +378,7 @@ async def main():
             create_masters(session, org_id, num_masters=3),
             create_services(session, master_ids, services_per_master=3),
             create_services(session, master_ids, services_per_master=3),
-            create_random_bookings(session, master_ids, service_map, num_bookings=15)
+            create_random_bookings(session, master_ids, service_map, num_bookings=15),
         ]
 
         while True:
@@ -400,9 +393,13 @@ async def main():
                 elif x == 4:
                     await create_services(session, master_ids, services_per_master=3)
                 elif x == 5:
-                    await create_random_bookings(session, master_ids, service_map, num_bookings=15)
+                    await create_random_bookings(
+                        session, master_ids, service_map, num_bookings=15
+                    )
                 await asyncio.sleep(4)
             except Exception as error:
                 print(error)
+
+
 if __name__ == "__main__":
     asyncio.run(main())

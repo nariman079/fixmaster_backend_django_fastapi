@@ -6,6 +6,7 @@ from rest_framework.request import Request
 from config import csm_metrics
 from src.utils.logger import RequestLogger
 
+
 class RequestTimingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -37,18 +38,21 @@ class RequestIDMiddleware:
         request_id = request.META.get("HTTP_X_REQUEST_ID") or str(uuid.uuid4())
         logger = RequestLogger(request_id=request_id)
 
-        setattr(request, 'request_id', request_id)
-        setattr(request, 'logger', logger)
-        
-        logger.info("Начало HTTP-запроса", extra={
-            "method": request.method,
-            "path": request.path,
-        })
+        setattr(request, "request_id", request_id)
+        setattr(request, "logger", logger)
+
+        logger.info(
+            "Начало HTTP-запроса",
+            extra={
+                "method": request.method,
+                "path": request.path,
+            },
+        )
 
         response = self.get_response(request)
 
-        logger.info("Завершение HTTP-запроса", extra={
-            "status_code": response.status_code
-        })
+        logger.info(
+            "Завершение HTTP-запроса", extra={"status_code": response.status_code}
+        )
 
         return response

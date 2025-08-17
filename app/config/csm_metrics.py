@@ -66,7 +66,5 @@ APP_SERVICE_SOLD_COUNTER = metrics.Counter(
 APP_DAU_GAUGE = metrics.Gauge("app_dau_count", "DAU")
 APP_MAU_GAUGE = metrics.Gauge("app_mau_count", "MAU")
 APP_SERVICE_REVENUE_GAUGE = metrics.Gauge(
-    'app_service_revenue',
-    "Service reneuew",
-    labelnames=['title']
+    "app_service_revenue", "Service reneuew", labelnames=["title"]
 )

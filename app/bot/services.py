@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.db.models import F
 from django.db.transaction import atomic
-from config.settings import dict_get, cache
+from config.settings import cache
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 

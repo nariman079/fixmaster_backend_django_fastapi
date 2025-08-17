@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0029_order_create_at'),
-        ('src', '0030_auto_20250813_1454'),
+        ("src", "0029_order_create_at"),
+        ("src", "0030_auto_20250813_1454"),
     ]
 
-    operations = [
-    ]
+    operations = []

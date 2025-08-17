@@ -20,7 +20,7 @@ class OrderCreateView(APIView):
             order_create_srv = OrderCreateSrv(
                 serializer_validate_data=serializer.validated_data,
                 serialzier_data=serializer.data,
-                logger=self.request.logger
+                logger=self.request.logger,
             )
             return order_create_srv.execute()
         return Response(
