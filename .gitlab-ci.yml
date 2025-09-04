@@ -1,0 +1,136 @@
+stages:
+  - test
+  - lint
+  - security
+  - build
+  - deploy
+
+variables:
+  DJANGO_SETTINGS_MODULE: app.config.settings.production
+  PYTHON_VERSION: "3.11"
+  DOCKER_IMAGE: your-registry.example.com/fixmaster-bot:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA
+
+cache:
+  paths:
+    - .pip-cache/
+    - .pytest_cache/
+
+before_script:
+  - python -m venv venv
+  - source venv/bin/activate
+  - pip install --cache-dir .pip-cache -r app/requirements.txt
+
+test:
+  stage: test
+  image: python:$PYTHON_VERSION
+  services:
+    - postgres:15
+    - redis:7
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: runner
+    POSTGRES_PASSWORD: ""
+    REDIS_URL: redis://redis:6379/0
+  script:
+    - python app/manage.py makemigrations --check --dry-run  # Проверка, что миграции созданы
+    - python app/manage.py makemigrations
+    - python app/manage.py migrate
+    - pytest --cov=app/src --cov-report=xml --cov-fail-under=70  # Минимум 70% покрытия
+  coverage: '/TOTAL.*? (.*?)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+lint:
+  stage: lint
+  image: python:$PYTHON_VERSION
+  script:
+    - flake8 app/src/
+    - black --check app/src/
+    - isort --check-only app/src/
+    - mypy app/src/  
+
+security:
+  stage: security
+  image: python:$PYTHON_VERSION
+  script:
+    - bandit -r src/ -f json -o bandit-report.json || true
+    - safety check --output json --file requirements.txt > safety-report.json || true
+    - echo "Проверь отчеты: bandit-report.json, safety-report.json"
+  artifacts:
+    paths:
+      - bandit-report.json
+      - safety-report.json
+    when: always
+
+build:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build --pull -t $DOCKER_IMAGE .
+    - docker push $DOCKER_IMAGE
+  only:
+    - main
+    - staging
+
+deploy_staging:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+  script:
+    - ssh -o StrictHostKeyChecking=no $STAGING_USER@$STAGING_HOST "
+        docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY &&
+        docker pull $DOCKER_IMAGE &&
+        docker stop fixmaster-bot-staging || true &&
+        docker rm fixmaster-bot-staging || true &&
+        docker run -d \
+          --name fixmaster-bot-staging \
+          --env-file /opt/staging/.env \
+          -e DJANGO_SETTINGS_MODULE=config.settings.staging \
+          $DOCKER_IMAGE "
+  environment:
+    name: staging
+    url: https://staging.fixmaster.app
+  only:
+    - staging
+
+deploy_production:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+  script:
+    - ssh -o StrictHostKeyChecking=no $PROD_USER@$PROD_HOST "
+        docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY &&
+        docker pull $DOCKER_IMAGE &&
+        docker stop fixmaster-bot || true &&
+        docker rm fixmaster-bot || true &&
+        docker run -d \
+          --name fixmaster-bot \
+          --env-file /opt/prod/.env \
+          -e DJANGO_SETTINGS_MODULE=config.settings.production \
+          $DOCKER_IMAGE "
+  environment:
+    name: production
+    url: https://fixmaster.app
+  when: manual
+  only:
+    - main
+  needs: ["build"]
+

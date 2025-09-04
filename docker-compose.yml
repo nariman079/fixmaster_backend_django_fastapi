@@ -130,7 +130,6 @@ services:
     networks:
       - net
 
-  
 
   prometheus:
     image: prom/prometheus

@@ -18,6 +18,7 @@ class Image(models.Model):
     image = models.ImageField("Изображение", upload_to="images/", null=True, blank=True)
     image_url = models.CharField(max_length=700, null=True, blank=True)
     priority = models.IntegerField("Приоритет", default=0)
+    create_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return str(self.pk)

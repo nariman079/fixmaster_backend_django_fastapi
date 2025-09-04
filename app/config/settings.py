@@ -36,6 +36,7 @@ MIDDLEWARE = [
     "config.middlewares.RequestIDMiddleware",
     "config.middlewares.ErrorHandlingMiddleware",
     "config.middlewares.UncaughtExceptionMiddleware",
+    "config.middlewares.SecurityIPRateLimitMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -170,6 +171,10 @@ LOGGING = {
                 "name": "logger",
             },
         },
+        "system": {
+            'format': '[%(asctime)s] %(levelname)s [SYSTEM] %(message)s',
+        }
+
     },
     "handlers": {
         "console": {
@@ -187,6 +192,11 @@ LOGGING = {
             "backupCount": 7,
             "encoding": "utf-8",
         },
+        'system_console': {
+            'formatter': 'system',
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+        },
     },
     "loggers": {
         "src": {
@@ -198,6 +208,16 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': False,
         },
+        'src.celery': { 
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'src.system': {
+            'handlers': ['system_console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        }
     },
 }
 

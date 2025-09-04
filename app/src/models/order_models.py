@@ -25,6 +25,7 @@ class Booking(models.Model):
     customer = models.ForeignKey(
         "src.Customer", on_delete=models.CASCADE, null=True, blank=True
     )
+    create_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return str(self.master)

@@ -55,6 +55,7 @@ class Organization(models.Model):
         "src.OrganizationType", on_delete=models.PROTECT
     )
     is_verified = models.BooleanField("Верифицирован", default=False)
+    create_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title
@@ -96,6 +97,7 @@ class Master(models.Model):
         Organization, on_delete=models.CASCADE, verbose_name="Организация"
     )
     is_verified = models.BooleanField("Верифицирован", default=False)
+    create_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
@@ -131,7 +133,7 @@ class Service(models.Model):
     min_time = models.IntegerField(
         "Минимальная длительность процедуры",
     )
-
+    create_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return self.title
 
@@ -183,6 +185,7 @@ class Moderator(models.Model):
     telegram_id = models.CharField("ID Телеграм", max_length=30, default="default-user")
     login = models.CharField("Логин", max_length=30, unique=True)
     code = models.CharField("Код", max_length=30, null=True, blank=True)
+    create_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         if self.pk:

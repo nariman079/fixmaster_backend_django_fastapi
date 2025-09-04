@@ -1,3 +1,5 @@
+import time
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.request import Request
@@ -5,7 +7,7 @@ from rest_framework.request import Request
 
 from src.serializers.order_serializers import OrderSerializer, BookingSerializer
 from src.services.order_services import OrderCreateSrv, FreeBookingSrv
-
+from src.tasks.notification_tasks import test_task
 
 class OrderCreateView(APIView):
     serializer_class = OrderSerializer
@@ -58,5 +60,6 @@ class FreeBookingView(APIView):
         )
 
 def test_view(request):
-    import non_existent_module  # ImportError
+    time.sleep(4)
+    test_task.delay()
     return Response({"success": True})

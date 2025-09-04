@@ -17,3 +17,28 @@ scrape_configs:
           job: django-logs
           service: django-app
           __path__: /var/log/django/*.log
+            
+  - job_name: nginx-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx-logs
+          service: /var/log/nginx/*.log
+
+  - job_name: redis-logs
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: redis-logs
+          service: redis
+          __path__: /var/log/redis/*.log
+
+  - job_name: celery-logs
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: celery-logs
+          service: celery
+          __path__: /var/log/celery/*.log
+

@@ -1,8 +1,12 @@
 import time
 import uuid
+from collections import defaultdict, deque
+from threading import Lock
 
 from django.utils.deprecation import MiddlewareMixin
 from django.http import HttpResponseServerError
+from django.db import connection
+from django.db import DatabaseError, OperationalError, InterfaceError
 
 from rest_framework.request import Request
 
@@ -23,7 +27,6 @@ class RequestTimingMiddleware:
 
         duration = time.time() - start_time
 
-        # Определяем view (если возможно)
         view_name = getattr(request.resolver_match, "url_name", "unknown")
         method = request.method
         status = response.status_code
@@ -40,6 +43,9 @@ class RequestIDMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: Request):
+        if request.path == '/metrics':
+            return self.get_response(request)
+        
         request_id = request.META.get("HTTP_X_REQUEST_ID") or str(uuid.uuid4())
         logger = RequestLogger(request_id=request_id)
 
@@ -53,8 +59,23 @@ class RequestIDMiddleware:
                 "path": request.path,
             },
         )
-
+        start_time = time.time()
         response = self.get_response(request)
+        duration = time.time() - start_time
+
+        if duration > 1.0:  
+            logger.warning(
+                "Медленный HTTP-запрос",
+                extra={
+                    'request_id': getattr(request, 'request_id', 'unknown'),
+                    'path': request.path,
+                    'method': request.method,
+                    'duration': round(duration, 3),
+                    'status_code': response.status_code,
+                    'user_id': getattr(request.user, 'id', None),
+                    'event': 'http.slow.request'
+                }
+            )
 
         logger.info(
             "Завершение HTTP-запроса", extra={"status_code": response.status_code}
@@ -62,11 +83,12 @@ class RequestIDMiddleware:
 
         return response
 
+   
+
 logger = logging.getLogger('src.errors')
 
 class ErrorHandlingMiddleware(MiddlewareMixin):
     def process_exception(self, request, exception):
-        
         logger.error(
             "500 Internal Server Error",
             extra={
@@ -94,7 +116,7 @@ class UncaughtExceptionMiddleware:
         return self.get_response(request)
 
     def process_exception(self, request, exception):
-        
+
         if isinstance(exception, (DatabaseError, OperationalError, InterfaceError)):
             logger.error(
                 "Ошибка БД в запросе",
@@ -122,3 +144,82 @@ class UncaughtExceptionMiddleware:
                 'event': 'django.uncaught.exception'
             }
         )
+
+
+class SlowQueryMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+    
+    def __call__(self, request):
+        connection.queries_log.clear()
+
+        start_time = time.time()
+        response = self.get_response(request)
+        duration = time.time() - start_time
+
+        for query in connection.queries:
+            query_time = float(query['time'])
+            if query_time > 1.0:  # больше 1 секунды
+                logger.warning(
+                    "Медленный SQL-запрос",
+                    extra={
+                        'request_id': getattr(request, 'request_id', 'unknown'),
+                        'sql': query['sql'][:1000],  # ограничиваем длину
+                        'duration': query_time,
+                        'path': request.path,
+                        'method': request.method,
+                        'event': 'db.slow.query'
+                    }
+                )
+
+        return response
+
+
+ip_requests = defaultdict(lambda: defaultdict(deque))
+ip_lock = Lock()
+
+class SecurityIPRateLimitMiddleware:
+    def __init__(self, get_response, threshold=100) -> None:
+        self.get_response = get_response
+        self.threshold = threshold
+
+    def __call__(self, request):
+        if request.path == '/metrics':
+            return self.get_response(request)
+
+        ip = self.get_client_ip(request)
+        logger = getattr(request, 'logger')
+    
+        endpoint = f"{request.method} {request.path}"
+        now = time.time()
+
+        with ip_lock:
+            while ip_requests[ip][endpoint] and ip_requests[ip][endpoint][0] < now - 60:
+                ip_requests[ip][endpoint].popleft()
+
+            ip_requests[ip][endpoint].append(now)
+
+            if len(ip_requests[ip][endpoint]) > self.threshold:
+                logger.warning(
+                    "Подозрительная активность: частые запросы к эндпоинту",
+                    extra={
+                        'ip': ip,
+                        'endpoint': endpoint,
+                        'requests_count': len(ip_requests[ip][endpoint]),
+                        'user_agent': request.META.get('HTTP_USER_AGENT', '')[:200],
+                        'event': 'security.endpoint.rate_limit.exceeded'
+                    }
+            )
+
+        response = self.get_response(request)
+
+        return response
+    
+    def get_client_ip(self, request):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+    

@@ -1,10 +1,68 @@
+import time
+
 from celery import shared_task
+from celery.signals import task_prerun, task_postrun, task_success, task_retry, task_failure
 from telebot import types
+
+import logging
 
 from bot.config import master_bot, moderator_bot, organization_bot
 from src.models import Master, Organization, Moderator, Customer
 from src.utils.logger import RequestLogger
+from config.settings import redis
 
+logger = logging.getLogger('src.celery')
+
+task_start_times = {}
+
+@task_prerun.connect
+def task_prerun_hanlder(sender=None, task_id=None, task=None, **kwargs):
+    task_start_times[task_id] = time.time()
+
+
+@task_postrun.connect
+def task_postrun_hanlder(sender=None, task_id=None, task=None, **kwargs):
+    start_time = task_start_times.get(task_id, None)
+    if start_time:
+        duration = time.time() - start_time
+        if duration > 30.0:  # больше 5 секунд
+            logger.warning(
+                "Длительная Celery-задача",
+                extra={
+                    'task_name': sender.name,
+                    'task_id': task_id,
+                    'duration': round(duration, 3),
+                    'event': 'celery.slow.task'
+                }
+            )
+
+@task_retry.connect
+def task_retry_handler(sender=None, reason=None, **kwargs):
+    logger.warning(
+        "Повторная попытка выполнения задачи",
+        extra={
+            'task_id': kwargs.get('task_id'),
+            'task_name': sender.name,
+            'reason': str(reason),
+            'retries': kwargs.get('request', {}).get('retries', 0),
+            'event': 'celery.task.retry'
+        }
+    )
+
+@task_failure.connect
+def on_task_failure(sender=None, task_id=None, exception=None, traceback=None, **kwargs):
+    """Логируем ошибки задач"""
+    logger.error(
+        "Ошибка в Celery задаче",
+        extra={
+            'task_name': sender.name,
+            'task_id': task_id,
+            'exception_type': type(exception).__name__,
+            'exception_message': str(exception),
+            'traceback': str(traceback)[:500],  # ограничиваем длину
+            'event': 'celery.task.failed'
+        }
+    )
 
 def callback_verify_true_organization(organization_id: int) -> str:
     return f"organization_verify_true_{organization_id}"
@@ -22,8 +80,10 @@ def get_moderator_for_send_message() -> Moderator:
     return Moderator.objects.first()
 
 
-@shared_task
+
+@shared_task(bind=True)
 def send_message_telegram_on_master(
+    self,
     master_id: int,
     client_phone_number: str,
     booking_date: str,
@@ -65,14 +125,22 @@ def send_message_telegram_on_master(
         )
     except Exception as error:
         logger.error(
-            "Ошибка отправки телеграм сообщения",
+            "Ошибка отправки телеграм сообщения, пробуем снова",
             extra={
                 "error_message": f"{error}",
                 "master_id": master.telegram_id,
                 "event": "notify.send.telegram",
             },
         )
+        raise self.retry(
+            error,
+            countdown=10,
+            max_retries=3
+        )
 
+@shared_task
+def test_task():
+    time.sleep(6)
 
 @shared_task
 def send_message_about_verify_master(
