@@ -29,11 +29,16 @@ jobs:
           pip install -r app/requirements.txt
 
       # 🔍 1. Статический анализ кода (SAST)
-      # - name: SAST 
-      #   uses: docker://ghcr.io/py-foundations/bandit-action:latest
-      #   with: 
-      #     args: -r .
+      - name: Run bandit 
+        run: |
+          pip install bandit
+          bandit -r . -f json -o bandit-report.json || json
 
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
       # 🔍 2. Проверка уязвимостей в зависимостях (SCA)
       # 🐳 3. Сборка образа и проверка Docker-файла
       # 🔍 4. Сканирование образа на уязвимости (в контейнере)
