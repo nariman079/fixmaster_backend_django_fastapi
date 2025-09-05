@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         python-version: [3.12]
 
@@ -50,7 +50,7 @@ jobs:
         with:
           name: sca-report
           path: sca-report.json
-          
+
       # 🐳 3. Сборка образа и проверка Docker-файла
       # 🔍 4. Сканирование образа на уязвимости (в контейнере)
       # 🧪 5. Запуск тестов (если есть)
