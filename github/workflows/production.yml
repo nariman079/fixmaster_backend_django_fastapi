@@ -1,0 +1,15 @@
+name: Production CI/CD Pipeline 
+
+on:
+  push:
+    branches: [ main ]
+
+
+jobs:
+  test:
+    steps: 
+      - name: Checkout code 
+        uses: actions/checkout@v4
+
+      - name: Test run
+        run: echo "test"
