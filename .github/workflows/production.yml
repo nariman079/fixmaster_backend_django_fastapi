@@ -32,7 +32,7 @@ jobs:
       - name: Run bandit 
         run: |
           pip install bandit
-          bandit -r . -f json -o bandit-report.json || json
+          bandit -r . -f json -o bandit-report.json || true
 
       - name: Upload artifact 
         uses: actions/upload-artifact@v4
