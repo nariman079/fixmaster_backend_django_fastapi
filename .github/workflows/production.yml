@@ -62,7 +62,12 @@ jobs:
           dockerfile: Dockerfile
           format: json
           output-file: hadolint-report.json
-          
+      
+      - name: Upload Hadolint 
+        uses: actions/upload-artifact
+        with:
+          name: hadolint-report
+          path: hadolint-report.json
       # 🧪 5. Запуск тестов (если есть)
 
       # 🚀 6. (Опционально) Деплой в dev-среду
