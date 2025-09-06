@@ -70,6 +70,22 @@ jobs:
         with:
           name: hadolint-report
           path: hadolint-report.json
-      # 🧪 5. Запуск тестов (если есть)
+
+      # 5. Сканирование образа
+      - name: Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "image"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          ignore-unfixed: true
+          severity: "HIGH,CRITICAL"
+          image-ref: fixmaster:${{github.sha}}
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-results.sarif
 
       # 🚀 6. (Опционально) Деплой в dev-среду
