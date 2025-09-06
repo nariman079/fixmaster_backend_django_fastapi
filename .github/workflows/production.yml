@@ -64,7 +64,7 @@ jobs:
           output-file: hadolint-report.json
       
       - name: Upload Hadolint 
-        uses: actions/upload-artifact
+        uses: actions/upload-artifact@v4
         with:
           name: hadolint-report
           path: hadolint-report.json
