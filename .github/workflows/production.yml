@@ -88,4 +88,9 @@ jobs:
           name: trivy-report
           path: trivy-results.sarif
 
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
       # 🚀 6. (Опционально) Деплой в dev-среду
