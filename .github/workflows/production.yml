@@ -117,3 +117,11 @@ jobs:
           docker push nariman079i/fixmaster:${{ github.sha }}
       
       
+      - name: Deploy via Ansible
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            ansible-playbook -i "localhost," -c local deploy.yml --extra-vars "github_sha=${{ github.sha }}"

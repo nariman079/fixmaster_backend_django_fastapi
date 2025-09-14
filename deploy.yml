@@ -1,0 +1,26 @@
+- name: Deploy FixMaster app
+  hosts: production
+  become: yes
+  vars:
+    docker_image: "nariman079i/fixmaster:{{ github_sha }}"
+  tasks:
+    - name: Pull latest Docker image
+      docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+
+    - name: Stop old container
+      docker_container:
+        name: fixmaster
+        state: absent
+
+    - name: Run new container
+      docker_container:
+        name: fixmaster
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "8000:8000"
+        env:
+          DJANGO_SETTINGS_MODULE: "app.settings.production"
