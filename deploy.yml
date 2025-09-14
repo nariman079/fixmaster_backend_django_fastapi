@@ -2,25 +2,17 @@
   hosts: all
   become: yes
   vars:
-    docker_image: "nariman079i/fixmaster:{{ github_sha }}"
+    compose_project_dir: "/tmp/"
   tasks:
-    - name: Pull latest Docker image
-      docker_image:
-        name: "{{ docker_image }}"
-        source: pull
+    - name: Pull the latest images and start the services
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_project_dir }}"
+        pull: always  
+        build: never  
+        state: present  
+        recreate: smart  
+        remove_orphans: no  
+        dependencies: yes  
+      register: compose_output
 
-    - name: Stop old container
-      docker_container:
-        name: fixmaster
-        state: absent
-
-    - name: Run new container
-      docker_container:
-        name: fixmaster
-        image: "{{ docker_image }}"
-        state: started
-        restart_policy: always
-        ports:
-          - "8000:8000"
-        env:
-          DJANGO_SETTINGS_MODULE: "app.settings.production"
+    
