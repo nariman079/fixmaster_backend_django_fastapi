@@ -57,8 +57,8 @@ jobs:
       #     path: sca-report.json
 
       # # 🐳 3. Сборка образа и проверка Docker-файла
-      # - name: Build docker image
-      #   run: docker build -t fixmaster:${{github.sha}} .
+      - name: Build docker image
+        run: docker build -t fixmaster:${{github.sha}} .
 
       # # 🔍 4. Сканирование образа на уязвимости (в контейнере)
       # - name: Lint Docker image
