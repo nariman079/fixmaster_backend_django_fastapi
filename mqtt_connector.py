@@ -5,7 +5,7 @@ import subprocess
 # Настройки
 BROKER = "broker.hivemq.com"  # Публичный MQTT-брокер для тестов
 PORT = 1883
-TOPIC = "nariman079i/grafana/topic"
+TOPIC = "nariman079i/micheck/top"
 CLIENT_ID = "python_client"
 
 # Явно указываем версию API (исправляет ошибку)
