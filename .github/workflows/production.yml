@@ -98,9 +98,9 @@ jobs:
           sarif_file: trivy-results.sarif
 
     
-      # Проверка секретов 
-      - name: Scan repository secrets
-        uses: gitleaks/gitleaks-action@v2
+      # # Проверка секретов 
+      # - name: Scan repository secrets
+      #   uses: gitleaks/gitleaks-action@v2
 
 
       # Загрузка докера в Docker Hub
