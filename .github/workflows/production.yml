@@ -132,5 +132,5 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            ansible-playbook -i "localhost," -c local /tmp/deploy.yml --extra-vars "github_sha=${{ github.sha }}"
+            ansible-playbook -i "109.73.203.230," -c local /tmp/deploy.yml --extra-vars "github_sha=${{ github.sha }}"
 
