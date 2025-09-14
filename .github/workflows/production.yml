@@ -117,9 +117,9 @@ jobs:
       #     docker push nariman079i/fixmaster:${{ github.sha }}
       - name: Build and push images
         run: |
-          docker-compose -f docker-compose.yml build
-          docker-compose -f docker-compose.yml push
-          
+          docker compose -f docker-compose.yml build
+          docker compose -f docker-compose.yml push
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
