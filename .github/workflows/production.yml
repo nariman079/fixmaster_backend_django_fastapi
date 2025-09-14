@@ -115,9 +115,9 @@ jobs:
         run: |
           docker tag fixmaster:${{ github.sha }} nariman079i/fixmaster:${{ github.sha }}
           docker push nariman079i/fixmaster:${{ github.sha }}
-          
+
       - name: Copy deploy.yml to server
-        uses: appleboy/scp-action@v0.1.0
+        uses: appleboy/scp-action@v0.1.5
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
