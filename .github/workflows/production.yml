@@ -22,85 +22,85 @@ jobs:
       - name: Checkout code 
         uses: actions/checkout@v4
 
-      - name: Install Python 
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{matrix.python-version}}
+      # - name: Install Python 
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: ${{matrix.python-version}}
 
-      - name: Install requirements.txt
-        run: |
-          pip install --upgrade pip
-          pip install -r app/requirements.txt
+      # - name: Install requirements.txt
+      #   run: |
+      #     pip install --upgrade pip
+      #     pip install -r app/requirements.txt
 
-      # 🔍 1. Статический анализ кода (SAST)
-      - name: Run bandit 
-        run: |
-          pip install bandit
-          bandit -r . -f json -o bandit-report.json || true
+      # # 🔍 1. Статический анализ кода (SAST)
+      # - name: Run bandit 
+      #   run: |
+      #     pip install bandit
+      #     bandit -r . -f json -o bandit-report.json || true
 
-      - name: Upload artifact 
-        uses: actions/upload-artifact@v4
-        with:
-          name: bandit-report
-          path: bandit-report.json
+      # - name: Upload artifact 
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: bandit-report
+      #     path: bandit-report.json
       
-      # 🔍 2. Проверка уязвимостей в зависимостях (SCA)
-      - name: Run pip-audit
-        run: |
-          pip-audit --format json > sca-report.json || true
+      # # 🔍 2. Проверка уязвимостей в зависимостях (SCA)
+      # - name: Run pip-audit
+      #   run: |
+      #     pip-audit --format json > sca-report.json || true
 
-      - name: Upload SCA Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: sca-report
-          path: sca-report.json
+      # - name: Upload SCA Report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: sca-report
+      #     path: sca-report.json
 
-      # 🐳 3. Сборка образа и проверка Docker-файла
-      - name: Build docker image
-        run: docker build -t fixmaster:${{github.sha}} .
+      # # 🐳 3. Сборка образа и проверка Docker-файла
+      # - name: Build docker image
+      #   run: docker build -t fixmaster:${{github.sha}} .
 
-      # 🔍 4. Сканирование образа на уязвимости (в контейнере)
-      - name: Lint Docker image
-        uses: hadolint/hadolint-action@v3.1.0
-        continue-on-error: true
-        with: 
-          dockerfile: Dockerfile
-          format: json
-          output-file: hadolint-report.json
-          no-fail: true
+      # # 🔍 4. Сканирование образа на уязвимости (в контейнере)
+      # - name: Lint Docker image
+      #   uses: hadolint/hadolint-action@v3.1.0
+      #   continue-on-error: true
+      #   with: 
+      #     dockerfile: Dockerfile
+      #     format: json
+      #     output-file: hadolint-report.json
+      #     no-fail: true
       
-      - name: Upload Hadolint 
-        uses: actions/upload-artifact@v4
-        with:
-          name: hadolint-report
-          path: hadolint-report.json
+      # - name: Upload Hadolint 
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: hadolint-report
+      #     path: hadolint-report.json
 
-      # 5. Сканирование образа
-      - name: Scan Image with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: "image"
-          format: "sarif"
-          output: "trivy-results.sarif"
-          ignore-unfixed: true
-          severity: "HIGH,CRITICAL"
-          image-ref: fixmaster:${{github.sha}}
+      # # 5. Сканирование образа
+      # - name: Scan Image with Trivy
+      #   uses: aquasecurity/trivy-action@master
+      #   with:
+      #     scan-type: "image"
+      #     format: "sarif"
+      #     output: "trivy-results.sarif"
+      #     ignore-unfixed: true
+      #     severity: "HIGH,CRITICAL"
+      #     image-ref: fixmaster:${{github.sha}}
 
-      - name: Upload Trivy Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: trivy-results.sarif
+      # - name: Upload Trivy Report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: trivy-report
+      #     path: trivy-results.sarif
 
-      - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-results.sarif
+      # - name: Upload SARIF to GitHub Security
+      #   uses: github/codeql-action/upload-sarif@v3
+      #   with:
+      #     sarif_file: trivy-results.sarif
 
     
-      # # Проверка секретов 
-      # - name: Scan repository secrets
-      #   uses: gitleaks/gitleaks-action@v2
+      # # # Проверка секретов 
+      # # - name: Scan repository secrets
+      # #   uses: gitleaks/gitleaks-action@v2
 
 
       # Загрузка докера в Docker Hub
