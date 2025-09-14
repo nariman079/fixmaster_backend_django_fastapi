@@ -53,7 +53,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}      
           username: ${{ secrets.PROD_USER }} 
           key: ${{ secrets.PROD_SSH_KEY }}     
-          source: "docker-comose.yml,.env,configs/,Dockerfile"
+          source: "docker-comose.yml,.env,conf/,Dockerfile"
           target: "/opt/app/"
           
       

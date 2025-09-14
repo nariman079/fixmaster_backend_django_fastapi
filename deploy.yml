@@ -2,7 +2,7 @@
   hosts: all
   become: yes
   vars:
-    compose_project_dir: "/tmp/"
+    compose_project_dir: "/opt/app/"
   tasks:
     - name: Pull the latest images and start the services
       community.docker.docker_compose_v2:
