@@ -115,7 +115,15 @@ jobs:
         run: |
           docker tag fixmaster:${{ github.sha }} nariman079i/fixmaster:${{ github.sha }}
           docker push nariman079i/fixmaster:${{ github.sha }}
-      
+          
+      - name: Copy deploy.yml to server
+        uses: appleboy/scp-action@v0.1.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: "deploy.yml"
+          target: "/tmp/deploy.yml"
 
       - name: Deploy via Ansible
         uses: appleboy/ssh-action@v0.1.9
@@ -124,5 +132,5 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            ansible-playbook -i "localhost," -c local deploy.yml --extra-vars "github_sha=${{ github.sha }}"
-            
+            ansible-playbook -i "localhost," -c local /tmp/deploy.yml --extra-vars "github_sha=${{ github.sha }}"
+
