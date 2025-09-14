@@ -8,7 +8,7 @@
       community.docker.docker_compose_v2:
         project_src: "{{ compose_project_dir }}"
         pull: always  
-        build: never  
+        build: true  
         state: present  
         recreate: auto  
         remove_orphans: no  
