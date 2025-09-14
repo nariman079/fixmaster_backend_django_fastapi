@@ -10,7 +10,7 @@
         pull: always  
         build: never  
         state: present  
-        recreate: smart  
+        recreate: auto  
         remove_orphans: no  
         dependencies: yes  
       register: compose_output
