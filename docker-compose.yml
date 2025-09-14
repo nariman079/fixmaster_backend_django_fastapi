@@ -8,7 +8,7 @@ volumes:
 
 networks:
   net:
-    driver: bridge
+    driver: host
 
 services:
   db:
@@ -56,6 +56,9 @@ services:
   app:
     build: .
     image: nariman079i/fixmaster:latest
+    dns: 
+      - 8.8.8.8
+      - 1.1.1.1
     restart: always
     command: poetry run uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 4
     volumes:
