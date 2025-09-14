@@ -123,7 +123,7 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           source: "deploy.yml"
-          target: "/tmp/deploy.yml"
+          target: "/tmp/"
 
       - name: Deploy via Ansible
         uses: appleboy/ssh-action@v0.1.9
