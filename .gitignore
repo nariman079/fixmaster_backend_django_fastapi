@@ -1,6 +1,7 @@
 media/
-__pycache__/
+__pycache__/** 
 */__pycache__/
+
 .idea/
 .sqlite.db
 .pyc
