@@ -395,7 +395,7 @@ class MasterCreateSrv:
     def create_master(self):
         try:
             self.master = Master.objects.create(**self.master_data)
-        except:
+        except Exception:
             raise ValidationError(
                 {
                     "message": "Не удалось создать мастера",

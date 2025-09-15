@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 
+import pickle
+import redis
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 LOGGING_DIR = os.path.join(BASE_DIR, "logs")
@@ -221,9 +224,6 @@ LOGGING = {
     },
 }
 
-import pickle
-
-import redis
 
 cache = redis.Redis(
     host="redis",

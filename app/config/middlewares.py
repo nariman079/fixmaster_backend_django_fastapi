@@ -155,7 +155,7 @@ class SlowQueryMiddleware:
 
         start_time = time.time()
         response = self.get_response(request)
-        duration = time.time() - start_time
+        _ = time.time() - start_time
 
         for query in connection.queries:
             query_time = float(query['time'])
