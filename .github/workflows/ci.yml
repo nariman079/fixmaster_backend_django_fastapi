@@ -21,7 +21,7 @@ jobs:
         run: pip install ruff 
         
       - name: Run ruff checker
-        run: ruff check . > tee lint-reason.txt
+        run: ruff check . > lint-reason.txt
 
       - name: Upload lint-reason
         if: always()
