@@ -17,11 +17,12 @@ jobs:
       - name: Checkout code 
         uses: actions/checkout@v4
         
-      - name: Ruff checker
-        run: |
-          pip install ruff
-          ruff check > lint-reason.txt
+      - name: Install Dependensices
+        run: pip install ruff 
         
+      - name: Run ruff checker
+        run: ruff check . > lint-reason.txt
+  
       - name: Upload lint-reason
         uses: actions/upload-artifact@v4
         with:
