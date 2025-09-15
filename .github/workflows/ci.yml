@@ -21,12 +21,7 @@ jobs:
         run: pip install ruff 
         
       - name: Run ruff checker
-        run: | 
-          ruff check . 
-
-      - name: Save checker reason
-        run: | 
-          ruff check . | tee lint-reason.txt
+        run: ruff check . | tee lint-reason.txt
 
       - name: Upload lint-reason
         if: always()
