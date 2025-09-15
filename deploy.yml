@@ -1,0 +1,18 @@
+- name: Deploy FixMaster app
+  hosts: all
+  become: yes
+  vars:
+    compose_project_dir: "/opt/app/"
+  tasks:
+    - name: Pull the latest images and start the services
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_project_dir }}"
+        pull: always  
+        build: always  
+        state: present  
+        recreate: auto  
+        remove_orphans: no  
+        dependencies: yes  
+      register: compose_output
+
+    
