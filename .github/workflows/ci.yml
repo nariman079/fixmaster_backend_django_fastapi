@@ -17,9 +17,6 @@ jobs:
       - name: Checkout code 
         uses: actions/checkout@v4
         
-      - name: Install Requirements
-        run: pip install -r app/requirements.txt
-
       - name: Ruff checker
         run: |
           pip install ruff
