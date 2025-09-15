@@ -22,9 +22,11 @@ jobs:
         
       - name: Run ruff checker
         run: | 
-          ruff check .  
-          ruff check . > lint-reason.txt
+          ruff check . 
 
+      - name: Save checker reason
+        run: | 
+          ruff check . | tee lint-reason.txt
 
       - name: Upload lint-reason
         if: always()
