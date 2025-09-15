@@ -21,8 +21,11 @@ jobs:
         run: pip install ruff 
         
       - name: Run ruff checker
-        run: ruff check . && ruff check .  > lint-reason.txt
-  
+        run: | 
+          ruff check .  
+          ruff check . > lint-reason.txt
+
+
       - name: Upload lint-reason
         if: always()
         uses: actions/upload-artifact@v4
