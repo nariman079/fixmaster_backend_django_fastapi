@@ -1,7 +1,7 @@
 import time
 
 from celery import shared_task
-from celery.signals import task_prerun, task_postrun, task_success, task_retry, task_failure
+from celery.signals import task_prerun, task_postrun, task_retry, task_failure
 from telebot import types
 
 import logging
@@ -9,7 +9,6 @@ import logging
 from bot.config import master_bot, moderator_bot, organization_bot
 from src.models import Master, Organization, Moderator, Customer
 from src.utils.logger import RequestLogger
-from config.settings import redis
 
 logger = logging.getLogger('src.celery')
 

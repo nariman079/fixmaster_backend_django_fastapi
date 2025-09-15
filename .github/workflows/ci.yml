@@ -1,0 +1,33 @@
+name: "CI for all branches"
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - master
+      - feature/*
+
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:  
+      - name: Checkout code 
+        uses: actions/checkout@v4
+        
+      - name: Install Requirements
+        run: pip install -r requirements.txt
+
+      - name: Ruff checker
+        run: |
+          pip install ruff
+          ruff check > lint-reason.txt
+        
+      - name: Upload lint-reason
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reason 
+          path: lint-reason.txt
+

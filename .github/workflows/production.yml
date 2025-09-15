@@ -1,9 +1,10 @@
 name: Production CI/CD Pipeline 
 
 on:
-  push:
+  pull_request:
     branches: 
       - master
+  
 
 permissions:
   contents: read
@@ -11,21 +12,14 @@ permissions:
   actions: read
   
 jobs:
-  test:
+  deploy-prod:
     runs-on: ubuntu-latest
     environment: prod
-    strategy:
-      fail-fast: true
-      matrix:
-        python-version: [3.12]
 
     steps:  
       - name: Checkout code 
         uses: actions/checkout@v4
 
-
-      - name: Build docker image
-        run: docker build -t fixmaster:${{github.sha}} .
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -47,6 +41,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
 
+
       - name: Copy deploy.yml to server
         uses: appleboy/scp-action@v0.1.5
         with:
@@ -55,7 +50,7 @@ jobs:
           key: ${{ secrets.PROD_SSH_KEY }}     
           source: "docker-compose.yml,.env,conf/,Dockerfile,app/"
           target: "/opt/app/"
-          
+  
       
       - name: Run Ansible Playbook
         run: |

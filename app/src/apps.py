@@ -1,8 +1,5 @@
 import logging
-import socket
 import os
-from django.core.signals import request_started
-from django.dispatch import receiver
 from django.apps import AppConfig
 
 

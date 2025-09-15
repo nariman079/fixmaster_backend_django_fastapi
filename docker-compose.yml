@@ -61,7 +61,6 @@ services:
     volumes:
       - ./app:/app
       - static:/app/static
-
       - media:/app/media
     env_file:
       - .env
@@ -115,8 +114,6 @@ services:
     env_file:
       - .env
 
-  
-
   alertmanager:
     image: prom/alertmanager:latest
     container_name: alertmanager
@@ -129,7 +126,6 @@ services:
       - '--storage.path=/alertmanager'
     networks:
       - net
-
 
   prometheus:
     image: prom/prometheus
