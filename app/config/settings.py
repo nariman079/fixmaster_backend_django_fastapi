@@ -48,7 +48,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
-    
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -175,17 +174,16 @@ LOGGING = {
             },
         },
         "system": {
-            'format': '[%(asctime)s] %(levelname)s [SYSTEM] %(message)s',
-        }
-
+            "format": "[%(asctime)s] %(levelname)s [SYSTEM] %(message)s",
+        },
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "main",  
+            "formatter": "main",
         },
-        "file": {  
+        "file": {
             "level": "DEBUG",
             "()": "logging.handlers.TimedRotatingFileHandler",
             "filename": os.path.join(LOGGING_DIR, "django.log"),
@@ -195,8 +193,8 @@ LOGGING = {
             "backupCount": 7,
             "encoding": "utf-8",
         },
-        'system_console': {
-            'formatter': 'system',
+        "system_console": {
+            "formatter": "system",
             "level": "DEBUG",
             "class": "logging.StreamHandler",
         },
@@ -206,21 +204,21 @@ LOGGING = {
             "handlers": ["console", "file"],
             "level": "DEBUG",
         },
-        'src.errors': { 
-            'handlers': ['console', 'file'],
-            'level': 'ERROR',
-            'propagate': False,
+        "src.errors": {
+            "handlers": ["console", "file"],
+            "level": "ERROR",
+            "propagate": False,
         },
-        'src.celery': { 
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
+        "src.celery": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
         },
-        'src.system': {
-            'handlers': ['system_console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        }
+        "src.system": {
+            "handlers": ["system_console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
     },
 }
 

@@ -70,13 +70,10 @@ APP_SERVICE_REVENUE_GAUGE = metrics.Gauge(
 )
 
 HTTP_500_ERRORS_COUNTER = metrics.Counter(
-    'http_500_errors_total',
-    'Total number of HTTP 500 errors'
+    "http_500_errors_total", "Total number of HTTP 500 errors"
 )
 
 # Счётчик по путям (опционально)
 HTTP_500_ERRORS_BY_PATH = metrics.Counter(
-    'http_500_errors_by_path',
-    'HTTP 500 errors by path',
-    labelnames=['path']
+    "http_500_errors_by_path", "HTTP 500 errors by path", labelnames=["path"]
 )

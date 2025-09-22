@@ -14,7 +14,7 @@ static/
 .ruff_cache/
 *.log.*
 # Created by https://www.gitignore.io/api/macos,linux,django,python,pycharm
-
+.mypy_cache/
 ### Django ###
 *.log
 *.pot
