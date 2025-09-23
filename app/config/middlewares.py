@@ -1,5 +1,12 @@
+"""
+Обработчики запросов
+"""
+# pylint: disable=too-few-public-methods
+
 import time
 import uuid
+import logging
+
 from collections import defaultdict, deque
 from threading import Lock
 
@@ -10,7 +17,6 @@ from django.db import DatabaseError, OperationalError, InterfaceError
 
 from rest_framework.request import Request
 
-import logging
 
 from config import csm_metrics
 from src.utils.logger import RequestLogger
@@ -92,15 +98,15 @@ class RequestIDMiddleware:
         return response
 
 
-logger = logging.getLogger("src.errors")
 
 
 class ErrorHandlingMiddleware(MiddlewareMixin):
     """
     Обработчик 500-х ошибок
     """
-
+    # pylint: disable=missing-function-docstring
     def process_exception(self, request, exception):
+        logger = logging.getLogger("src.errors")
         logger.error(
             "500 Internal Server Error",
             extra={
@@ -132,11 +138,12 @@ class UncaughtExceptionMiddleware:
         return self.get_response(request)
 
     def process_exception(self, request, exception):
+        logger = logging.getLogger("src.errors")
         if isinstance(exception, (DatabaseError, OperationalError, InterfaceError)):
             logger.error(
                 "Ошибка БД в запросе",
                 extra={
-                    "trace_id": getattr(request, "trace_id", "unknown"),
+                    "request_id": getattr(request, "request_id", "unknown"),
                     "path": request.path,
                     "method": request.method,
                     "error_type": type(exception).__name__,
@@ -172,6 +179,7 @@ class SlowQueryMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        logger = logging.getLogger("src.errors")
         connection.queries_log.clear()
 
         start_time = time.time()
@@ -180,12 +188,12 @@ class SlowQueryMiddleware:
 
         for query in connection.queries:
             query_time = float(query["time"])
-            if query_time > 1.0:  # больше 1 секунды
+            if query_time > 1.0:
                 logger.warning(
                     "Медленный SQL-запрос",
                     extra={
                         "request_id": getattr(request, "request_id", "unknown"),
-                        "sql": query["sql"][:1000],  # ограничиваем длину
+                        "sql": query["sql"][:1000],
                         "duration": query_time,
                         "path": request.path,
                         "method": request.method,
@@ -201,6 +209,10 @@ ip_lock = Lock()
 
 
 class SecurityIPRateLimitMiddleware:
+    """
+    Обработка и ограничение запросов
+    """
+
     def __init__(self, get_response, threshold=100) -> None:
         self.get_response = get_response
         self.threshold = threshold
@@ -210,7 +222,8 @@ class SecurityIPRateLimitMiddleware:
             return self.get_response(request)
 
         ip = self.get_client_ip(request)
-        logger = getattr(request, "logger")
+        logger = logging.getLogger("src.errors")
+        logger = getattr(request, "logger", None)
 
         endpoint = f"{request.method} {request.path}"
         now = time.time()
@@ -238,6 +251,7 @@ class SecurityIPRateLimitMiddleware:
         return response
 
     def get_client_ip(self, request):
+        """Получение IP клиента"""
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
             ip = x_forwarded_for.split(",")[0].strip()

@@ -1,3 +1,6 @@
+"""
+Хранилище переменных для сбора метрики
+"""
 from prometheus_client import metrics
 
 APP_BOOKINGS_TOTAL = metrics.Gauge(
@@ -12,17 +15,14 @@ APP_BOOKING_DURATION = metrics.Histogram(
 APP_ORDERS_TOTAL_COUNTER = metrics.Counter(
     "app_orders_total", "Total number of orders created (increases monotonically)"
 )
-# 2. Gauge: количество заказов по статусам (может меняться)
 APP_ORDER_STATUS_GAUGE = metrics.Gauge(
     "app_order_status_count", "Number of orders by status", labelnames=["status"]
 )
-# 3. Histogram: длительность процедуры (если нужно)
 APP_ORDER_LENGTH_HISTOGRAM = metrics.Histogram(
     "app_order_length_minutes",
     "Length of order in minutes",
     buckets=(15, 30, 60, 90, 120, 180),  # настрой под свои услуги
 )
-# 4. Gauge: новых заказов за день (если хочешь "сегодня")
 APP_ORDERS_NEW_TODAY = metrics.Gauge(
     "app_orders_new_today", "Number of new orders created today (resets at 00:00)"
 )
