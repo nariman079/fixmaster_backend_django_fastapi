@@ -5,7 +5,7 @@ Django settings
 import os
 from pathlib import Path
 
-import pickle
+import json
 import redis
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -234,13 +234,13 @@ cache = redis.Redis(
 
 def dict_set(name: str, data: dict):
     """Создание dict в redis"""
-    cache.set(name, pickle.dumps(data))
+    cache.set(name, json.dumps(data))
 
 
 def dict_get(name: str) -> None | dict:
     """Получение dict с redis"""
     if value := cache.get(name):
-        return pickle.loads(value)
+        return json.loads(value)
     return None
 
 

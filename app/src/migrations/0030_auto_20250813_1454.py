@@ -1,12 +1,16 @@
+import os
+
 from django.db import migrations
 from django.contrib.auth import get_user_model
+
 from src.models.organization_models import OrganizationType, Organization
 
 
 def create_superuser(apps, schema_editor):
     User = get_user_model()
+    user_password = os.getenv("ROOT_USER_PASSWORD")
     if not User.objects.filter(username="root").exists():
-        User.objects.create_superuser(username="root", password="1")
+        User.objects.create_superuser(username="root", password=user_password)
     org_type = OrganizationType.objects.create(title="Салон красоты")
     _ = Organization.objects.create(
         title="title",

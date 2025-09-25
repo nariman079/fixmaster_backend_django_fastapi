@@ -1,4 +1,6 @@
-# pylint: disable=too-few-public-methods,missing-class-docstring,no-member,abstract-method
+# pylint: disable=too-few-public-methods,missing-class-docstring,
+# pylint: disable=no-member,abstract-method
+
 """
 Сериализаторы для приложения Организации
 """

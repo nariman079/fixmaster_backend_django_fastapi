@@ -2,8 +2,7 @@
 """
 Models for app Organizations
 """
-
-import random
+import secrets
 import uuid
 
 from django.db import models
@@ -197,7 +196,7 @@ class Moderator(models.Model):
         if self.pk:
             pass
         else:
-            self.code = random.randint(10000, 99999)
+            self.code = str(secrets.randbelow(90000) + 10000)
         return super().save(*args, **kwargs)
 
     def __str__(self):
