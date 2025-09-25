@@ -12,7 +12,6 @@ from src.models.organization_models import (
 )
 from src.models.image_models import Image
 from src.models.order_models import Order, Booking
-from src.models.csm_metrics_modesl import GaugeValue
 
 __all__ = (
     "Image",
@@ -25,5 +24,4 @@ __all__ = (
     "Master",
     "OrganizationType",
     "Moderator",
-    "GaugeValue",
 )

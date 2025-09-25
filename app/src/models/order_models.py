@@ -1,3 +1,9 @@
+# pylint: disable=missing-class-docstring,too-few-public-methods
+
+"""
+Models for app Orders
+"""
+
 from django.db import models
 from src.enums import statuses
 

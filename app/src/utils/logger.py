@@ -1,15 +1,25 @@
+"""
+Настройка кастомного логера
+"""
+
 import logging
 
-logger = logging.getLogger("src")
 
-
+# pylint: disable=missing-function-docstring
 class RequestLogger:
+    """
+    Логер для запросов
+
+    генерирует request_id
+    """
+
     def __init__(self, request_id: str) -> None:
         self.request_id = request_id
+        self.logger = logging.getLogger("src")
 
     def _log(self, level, msg, **kwargs):
         kwargs.setdefault("extra", {})["request_id"] = self.request_id
-        getattr(logger, level)(msg, **kwargs)
+        getattr(self.logger, level)(msg, **kwargs)
 
     def info(self, msg, **kwargs):
         self._log("info", msg, **kwargs)

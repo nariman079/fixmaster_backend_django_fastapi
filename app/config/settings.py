@@ -1,6 +1,7 @@
 """
 Django settings
 """
+
 import os
 from pathlib import Path
 
@@ -232,12 +233,15 @@ cache = redis.Redis(
 
 
 def dict_set(name: str, data: dict):
+    """Создание dict в redis"""
     cache.set(name, pickle.dumps(data))
 
 
-def dict_get(name: str):
+def dict_get(name: str) -> None | dict:
+    """Получение dict с redis"""
     if value := cache.get(name):
         return pickle.loads(value)
+    return None
 
 
 CELERY_BROKER_URL = "redis://redis:6379"

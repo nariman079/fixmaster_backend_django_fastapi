@@ -1,3 +1,8 @@
+"""
+Image utilites
+"""
+
+
 def get_full_url(serializer, model, image_field: str) -> str:
     """
     A function to generate a complete URL for images

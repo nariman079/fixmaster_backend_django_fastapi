@@ -4,6 +4,8 @@ __pycache__
 .env
 venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 tests/
 .gitignore
 .gitlab-ci.yml

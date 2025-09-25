@@ -1,0 +1,10 @@
+[MASTER]
+load-plugins = pylint_django
+ignore-patterns = 
+    ^.*migrations/.*$,
+    ^.*__pycache__/.*$,
+    ^.*venv/.*$,
+    ^.*.git/.*$
+
+[DJANGO]
+django-settings-module = config.settings

@@ -1,3 +1,8 @@
+# pylint: disable=missing-class-docstring,too-few-public-methods, invalid-str-returned
+"""
+Models for app Organizations
+"""
+
 import random
 import uuid
 
@@ -106,7 +111,7 @@ class Master(models.Model):
         if self.pk:
             pass
         else:
-            self.code = uuid.uuid4().__str__()
+            self.code = str(uuid.uuid4())
         return super().save(*args, **kwargs)
 
 
@@ -134,6 +139,7 @@ class Service(models.Model):
         "Минимальная длительность процедуры",
     )
     create_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.title
 
@@ -174,7 +180,7 @@ class Customer(models.Model):
         if self.pk:
             pass
         else:
-            self.code = uuid.uuid4().__str__()
+            self.code = str(uuid.uuid4())
         super().save(*args, **kwargs)
 
 

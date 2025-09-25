@@ -1,3 +1,4 @@
+# pylint: disable=abstract-method
 """
 Order serializers
 """
@@ -22,5 +23,7 @@ class OrderSerializer(serializers.Serializer):
 
 
 class BookingSerializer(serializers.Serializer):
+    """Сериализация броней"""
+
     date = serializers.DateField()
     master_id = serializers.IntegerField()

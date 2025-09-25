@@ -1,26 +1,36 @@
+# pylint: disable=too-many-arguments, too-many-positional-arguments
+"""
+Уведомления
+"""
+
 import time
+
+
+import logging
 
 from celery import shared_task
 from celery.signals import task_prerun, task_postrun, task_retry, task_failure
 from telebot import types
 
-import logging
-
 from bot.config import master_bot, moderator_bot, organization_bot
 from src.models import Master, Organization, Moderator, Customer
 from src.utils.logger import RequestLogger
 
-logger = logging.getLogger('src.celery')
 
 task_start_times = {}
 
+
+# pylint: disable=unused-argument
 @task_prerun.connect
 def task_prerun_hanlder(sender=None, task_id=None, task=None, **kwargs):
+    """Выполнение действия перед запуском задачи"""
     task_start_times[task_id] = time.time()
 
 
 @task_postrun.connect
 def task_postrun_hanlder(sender=None, task_id=None, task=None, **kwargs):
+    """Выполнение действия после запуска задачи"""
+    logger = logging.getLogger("src.celery")
     start_time = task_start_times.get(task_id, None)
     if start_time:
         duration = time.time() - start_time
@@ -28,56 +38,57 @@ def task_postrun_hanlder(sender=None, task_id=None, task=None, **kwargs):
             logger.warning(
                 "Длительная Celery-задача",
                 extra={
-                    'task_name': sender.name,
-                    'task_id': task_id,
-                    'duration': round(duration, 3),
-                    'event': 'celery.slow.task'
-                }
+                    "task_name": sender.name,
+                    "task_id": task_id,
+                    "duration": round(duration, 3),
+                    "event": "celery.slow.task",
+                },
             )
+
 
 @task_retry.connect
 def task_retry_handler(sender=None, reason=None, **kwargs):
+    """Повторная попытка выполнения задачи"""
+    logger = logging.getLogger("src.celery")
     logger.warning(
         "Повторная попытка выполнения задачи",
         extra={
-            'task_id': kwargs.get('task_id'),
-            'task_name': sender.name,
-            'reason': str(reason),
-            'retries': kwargs.get('request', {}).get('retries', 0),
-            'event': 'celery.task.retry'
-        }
+            "task_id": kwargs.get("task_id"),
+            "task_name": sender.name,
+            "reason": str(reason),
+            "retries": kwargs.get("request", {}).get("retries", 0),
+            "event": "celery.task.retry",
+        },
     )
 
+
 @task_failure.connect
-def on_task_failure(sender=None, task_id=None, exception=None, traceback=None, **kwargs):
+def on_task_failure(
+    sender=None, task_id=None, exception=None, traceback=None, **kwargs
+):
     """Логируем ошибки задач"""
+    logger = logging.getLogger("src.celery")
     logger.error(
         "Ошибка в Celery задаче",
         extra={
-            'task_name': sender.name,
-            'task_id': task_id,
-            'exception_type': type(exception).__name__,
-            'exception_message': str(exception),
-            'traceback': str(traceback)[:500],  # ограничиваем длину
-            'event': 'celery.task.failed'
-        }
+            "task_name": sender.name,
+            "task_id": task_id,
+            "exception_type": type(exception).__name__,
+            "exception_message": str(exception),
+            "traceback": str(traceback)[:500],
+            "event": "celery.task.failed",
+        },
     )
-
-def callback_verify_true_organization(organization_id: int) -> str:
-    return f"organization_verify_true_{organization_id}"
-
-
-def callback_verify_false_organization(organization_id: int) -> str:
-    return f"organization_verify_false_{organization_id}"
 
 
 def callback_verify_organization(organization_id: int, is_verify: bool) -> str:
+    """Генерация callback data"""
     return f"organization_verify_{'true' if is_verify else 'false'}_{organization_id}"
 
 
 def get_moderator_for_send_message() -> Moderator:
+    """Получение модератора"""
     return Moderator.objects.first()
-
 
 
 @shared_task(bind=True)
@@ -92,7 +103,6 @@ def send_message_telegram_on_master(
     """
     Отправка сообщения Мастеру о бронировании
     """
-
     logger = RequestLogger(request_id)
 
     try:
@@ -131,22 +141,15 @@ def send_message_telegram_on_master(
                 "event": "notify.send.telegram",
             },
         )
-        raise self.retry(
-            error,
-            countdown=10,
-            max_retries=3
-        )
+        raise self.retry(error, countdown=10, max_retries=3)
 
-@shared_task
-def test_task():
-    time.sleep(6)
 
 @shared_task
 def send_message_about_verify_master(
     master_id: int,
 ):
     """
-    Отправка сообщения Мастеру о бронировании
+    Отправка уведомления мастеру о его верификации
     """
     master = Master.objects.get(id=master_id)
     text = f"✅ Мастер {master.name} {master.surname} зарегистрировался в системе \n"
@@ -156,7 +159,8 @@ def send_message_about_verify_master(
 @shared_task
 def send_message_about_verify_customer(master_id: int, customer_id: int):
     """
-    Отправка сообщения Мастеру о бронировании
+    Отправка уведомления клиенту о его верификации
+
     """
     customer = Customer.objects.get(telegram_id=customer_id)
     text = (
@@ -170,15 +174,15 @@ def send_message_on_moderator_about_organization(organization_id: int):
     """Отправка сообщения модератору о регистрации новой организации"""
     organization = Organization.objects.get(pk=organization_id)
     moderator = get_moderator_for_send_message()
-
+    gallery_url = "https://booking.fix-mst.ru/admin/src/image/?organization__id__exact="
     message = f"""Новая заявка на верификацию!🟩🟩🟩
-Название: {organization.title}
-Адрес: {organization.address}
-Номер телефона: {organization.contact_phone}
-Тип огранизации: {organization.organization_type.title}
-Начало рабочего дня: {organization.time_begin}
-Конец рабочего дня: {organization.time_end}\n
-Ссылка на галерею: https://booking.fix-mst.ru/admin/src/image/?organization__id__exact={organization.pk}"""
+        Название: {organization.title}
+        Адрес: {organization.address}
+        Номер телефона: {organization.contact_phone}
+        Тип огранизации: {organization.organization_type.title}
+        Начало рабочего дня: {organization.time_begin}
+        Конец рабочего дня: {organization.time_end}\n
+        Ссылка на галерею: {gallery_url}{organization.pk}"""
 
     moderator_inline_markup = types.InlineKeyboardMarkup()
     verify_true_button = types.InlineKeyboardButton(

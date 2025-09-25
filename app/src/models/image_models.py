@@ -1,3 +1,4 @@
+# pylint: disable=missing-class-docstring,too-few-public-methods
 """
 Image models in project
 """

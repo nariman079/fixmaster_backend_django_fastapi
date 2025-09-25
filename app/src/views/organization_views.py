@@ -1,3 +1,8 @@
+# pylint: disable=missing-class-docstring
+"""
+Views for organization
+"""
+
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.exceptions import ValidationError
@@ -27,6 +32,7 @@ class OrganizationListView(APIView):
     serializer_class = OrganizationSerializer
 
     def get(self, request, *args, **kwargs):
+        """Получение списка организаций"""
         try:
             organization_queryset = Organization.objects.filter(
                 **self.request.query_params.dict()
@@ -45,7 +51,7 @@ class OrganizationListView(APIView):
                 }
             )
         except ValueError as ex:
-            raise ValidationError(ex.args, code=400)
+            raise ValidationError(ex.args, code=400) from ex
 
 
 class OrganizationDetailView(APIView):
@@ -57,6 +63,7 @@ class OrganizationDetailView(APIView):
     """
 
     def get(self, request, organization_id: int, *args, **kwargs):
+        """Получение детальной информации"""
         try:
             organization = Organization.objects.get(id=organization_id)
             organization_serializer = OrganizationDetailSerializer(

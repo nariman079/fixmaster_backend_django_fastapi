@@ -1,3 +1,8 @@
+# pylint: disable=no-member,too-few-public-methods
+"""
+Работа с организациями
+"""
+
 from django.db.models import Q
 
 from rest_framework.response import Response

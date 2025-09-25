@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,too-many-locals,broad-exception-caught
 from django.http import HttpResponse
 from prometheus_client import generate_latest
 
@@ -6,6 +7,7 @@ from config.settings import dict_get
 
 
 def metrics_view(request):
+    """View for Prometheus"""
     try:
         order_status_count = dict_get("order_status_count")
         organization_type_count = dict_get("organization_type_count")

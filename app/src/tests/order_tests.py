@@ -1,3 +1,4 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring
 from datetime import datetime, time
 from collections import OrderedDict
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -6,6 +7,7 @@ from rest_framework.test import APITestCase
 
 from src.services.order_services import OrderCreateSrv, FreeBookingSrv
 from src.models import Master, Service, Organization, OrganizationType
+from src.utils.logger import RequestLogger
 
 
 def generate_image():
@@ -48,6 +50,7 @@ class OrderTestCase(APITestCase):
         self.booking_test_date = datetime(day=10, year=2023, month=12)
 
     def test_create_order(self):
+        logger = RequestLogger("2")
         data = OrderedDict(
             master_id=self.master.id,
             service_ids=[
@@ -60,7 +63,7 @@ class OrderTestCase(APITestCase):
             customer_notice="notice",
         )
         order_create_srv = OrderCreateSrv(
-            serialzier_data=data, serializer_validate_data=data
+            serialzier_data=data, serializer_validate_data=data, logger=logger
         )
         response = order_create_srv.execute()
 
@@ -75,6 +78,7 @@ class OrderTestCase(APITestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_getting_bookings_ok(self):
+        logger = RequestLogger("3")
         service = self.service = Service.objects.create(
             master=self.master, title="title", price=10, min_time=90
         )
@@ -88,9 +92,10 @@ class OrderTestCase(APITestCase):
             customer_phone="89",
             customer_name="name",
             customer_notice="notice",
+            logger=logger,
         )
         order_create_srv = OrderCreateSrv(
-            serialzier_data=data, serializer_validate_data=data
+            serialzier_data=data, serializer_validate_data=data, logger=logger
         )
         order_create_srv.execute()
 
@@ -100,5 +105,3 @@ class OrderTestCase(APITestCase):
         booking_times = FreeBookingSrv(booking_data)
         response = booking_times.execute()
         self.assertEqual(response.status_code, 200)
-
-        # todo Дописать тесты

@@ -1,6 +1,10 @@
+"""
+Main url models
+"""
+
 from django.urls import path
 
-from src.views.order_views import OrderCreateView, FreeBookingView, test_view
+from src.views.order_views import OrderCreateView, FreeBookingView
 from src.views.organization_views import (
     OrganizationListView,
     OrganizationDetailView,
@@ -8,7 +12,6 @@ from src.views.organization_views import (
     SearchOrganization,
     ServiceListView,
     MasterListView,
-    
 )
 
 urlpatterns = [
@@ -20,5 +23,4 @@ urlpatterns = [
     path("organizations-types/", OrganizationTypeListView.as_view()),
     path("services/", ServiceListView.as_view()),
     path("master/services/", MasterListView.as_view()),
-    path('test/', test_view)
 ]

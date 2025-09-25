@@ -1,3 +1,7 @@
+"""
+Загрузка всех асинхронных задач
+"""
+
 from src.tasks.notification_tasks import (
     send_message_telegram_on_master,
     send_message_on_moderator_about_organization,

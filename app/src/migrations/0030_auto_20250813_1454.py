@@ -8,7 +8,7 @@ def create_superuser(apps, schema_editor):
     if not User.objects.filter(username="root").exists():
         User.objects.create_superuser(username="root", password="1")
     org_type = OrganizationType.objects.create(title="Салон красоты")
-    adg = Organization.objects.create(
+    _ = Organization.objects.create(
         title="title",
         telegram_id="default",
         address="address",

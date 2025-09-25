@@ -1,3 +1,9 @@
+# pylint: disable=no-member
+"""
+Сервисы для работы с заказами и бронированием.
+Содержит бизнес-логику создания заказов и проверки свободного времени.
+"""
+
 from datetime import time
 from datetime import datetime, timedelta
 from typing import Any, OrderedDict
@@ -23,17 +29,17 @@ def complete_totals(services: QuerySet["Service"]) -> Any:
     )
 
 
-def time_to_int(time: time) -> int:
+def time_to_int(tm: time) -> int:
     """Time to int"""
-    return int(time.strftime("%H:%M").split(":")[0])
+    return int(tm.strftime("%H:%M").split(":")[0])
 
 
-def is_free_time(time: str, available_times: list[str]):
+def is_free_time(tm: str, available_times: list[str]):
     """Не занятое время"""
-    hour = time.split(":")[0]
+    hour = tm.split(":")[0]
     all_times = map(lambda x: x.split(":")[0], available_times)
 
-    return {"time": time, "is_free": hour not in all_times}
+    return {"time": tm, "is_free": hour not in all_times}
 
 
 def is_retroactive_date(date):
@@ -41,6 +47,7 @@ def is_retroactive_date(date):
     return date < datetime.now().date()
 
 
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
 class OrderCreateSrv:
     """
     Create order service
@@ -61,6 +68,13 @@ class OrderCreateSrv:
         self.customer_phone = serializer_validate_data.get("customer_phone")
         self.customer_name = serializer_validate_data.get("customer_name")
         self.customer_notice = serializer_validate_data.get("customer_notice")
+        self.serivces = None
+        self.summed_time = None
+        self.summed_num = None
+        self.booking = None
+        self.customer = None
+        self.total_price = None
+        self.order = None
 
     def _validate_booking_master(self) -> None:
         bookings = Booking.objects.filter(
@@ -115,12 +129,12 @@ class OrderCreateSrv:
         self.order.save()
         self.logger.debug(
             "Создание заказа",
-            extra=dict(
-                booking_date=self.order.begin_date,
-                booking_time=self.begin_time,
-                booking_end_time=self.summed_time,
-                master_id=self.master_id,
-            ),
+            extra={
+                "booking_date": self.order.begin_date,
+                "booking_time": self.begin_time,
+                "booking_end_time": self.summed_time,
+                "master_id": self.master_id,
+            },
         )
 
     def _create_booking(self):
@@ -133,12 +147,12 @@ class OrderCreateSrv:
         )
         self.logger.debug(
             "Создание брони",
-            extra=dict(
-                booking_date=self.order.begin_date,
-                booking_time=self.begin_time,
-                booking_end_time=self.summed_time,
-                master_id=self.master_id,
-            ),
+            extra={
+                "booking_date": self.order.begin_date,
+                "booking_time": self.begin_time,
+                "booking_end_time": self.summed_time,
+                "master_id": self.master_id,
+            },
         )
 
     def _create_customer(self):
@@ -155,12 +169,12 @@ class OrderCreateSrv:
             csm_metrics.APP_CUSTOMER_NEW_COUNTER.inc()
             self.logger.debug(
                 "Создание нового клиента",
-                extra=dict(
-                    customer_id=self.customer.pk,
-                    customer_name=self.customer_name,
-                    customer_phone=self.customer_phone,
-                    event="customer.add.new",
-                ),
+                extra={
+                    "customer_id": self.customer.pk,
+                    "customer_name": self.customer_name,
+                    "customer_phone": self.customer_phone,
+                    "event": "customer.add.new",
+                },
             )
 
         else:
@@ -170,12 +184,12 @@ class OrderCreateSrv:
 
             self.logger.debug(
                 "Добавление существующего пользователя",
-                extra=dict(
-                    customer_id=self.customer.pk,
-                    customer_name=self.customer_name,
-                    customer_phone=self.customer_phone,
-                    event="customer.add.new",
-                ),
+                extra={
+                    "customer_id": self.customer.pk,
+                    "customer_name": self.customer_name,
+                    "customer_phone": self.customer_phone,
+                    "event": "customer.add.exists",
+                },
             )
 
         self.booking.customer = self.customer
@@ -204,7 +218,8 @@ class OrderCreateSrv:
         ).total_seconds()
 
         change_status_order.apply_async(
-            (self.order.pk, "in-progress", self.logger.request_id), countdown=change_in_progress_time
+            (self.order.pk, "in-progress", self.logger.request_id),
+            countdown=change_in_progress_time,
         )
         change_status_order.apply_async(
             (self.order.pk, "done", self.logger.request_id), countdown=change_done_time
@@ -236,11 +251,11 @@ class OrderCreateSrv:
 
         self.logger.debug(
             "Заказ успешно создан",
-            extra=dict(
-                order_id=self.order.pk,
-                customer_id=self.customer.pk,
-                event="order.create",
-            ),
+            extra={
+                "order_id": self.order.pk,
+                "customer_id": self.customer.pk,
+                "event": "order.create",
+            },
         )
         return Response(
             {
@@ -261,6 +276,11 @@ class FreeBookingSrv:
     def __init__(self, serializer_validated_data: OrderedDict) -> None:
         self.date = serializer_validated_data.get("date")
         self.master_id = serializer_validated_data.get("master_id")
+        self.available_times = set()
+        self.bookings = None
+        self.free_times = None
+        self.times = None
+        self.organization = None
 
     def _get_master_bookings(self) -> None:
         """
@@ -280,7 +300,7 @@ class FreeBookingSrv:
         """
         Get master available time
         """
-        self.available_times = set()
+
         if not self.bookings:
             for i in range(
                 time_to_int(self.organization.time_begin),

@@ -1,3 +1,7 @@
+"""
+Изменения метрик Prometheus
+"""
+
 from datetime import timedelta
 from collections import defaultdict
 
@@ -16,8 +20,10 @@ from src.models import (
 from src.enums.statuses import CHOICES_STATUS
 
 
+# pylint: disable=too-many-locals,broad-exception-caught
 @shared_task
 def update_metrics():
+    """Обновление метрик"""
     try:
         order_status_count = {}
         for status, _ in CHOICES_STATUS:

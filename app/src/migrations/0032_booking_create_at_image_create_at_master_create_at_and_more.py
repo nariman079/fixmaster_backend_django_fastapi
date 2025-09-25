@@ -4,40 +4,39 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('src', '0031_merge_0029_order_create_at_0030_auto_20250813_1454'),
+        ("src", "0031_merge_0029_order_create_at_0030_auto_20250813_1454"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='booking',
-            name='create_at',
+            model_name="booking",
+            name="create_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AddField(
-            model_name='image',
-            name='create_at',
+            model_name="image",
+            name="create_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AddField(
-            model_name='master',
-            name='create_at',
+            model_name="master",
+            name="create_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AddField(
-            model_name='moderator',
-            name='create_at',
+            model_name="moderator",
+            name="create_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AddField(
-            model_name='organization',
-            name='create_at',
+            model_name="organization",
+            name="create_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AddField(
-            model_name='service',
-            name='create_at',
+            model_name="service",
+            name="create_at",
             field=models.DateTimeField(auto_now=True),
         ),
     ]

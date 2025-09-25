@@ -98,12 +98,11 @@ class RequestIDMiddleware:
         return response
 
 
-
-
 class ErrorHandlingMiddleware(MiddlewareMixin):
     """
     Обработчик 500-х ошибок
     """
+
     # pylint: disable=missing-function-docstring
     def process_exception(self, request, exception):
         logger = logging.getLogger("src.errors")
@@ -137,6 +136,7 @@ class UncaughtExceptionMiddleware:
     def __call__(self, request):
         return self.get_response(request)
 
+    # pylint: disable=missing-function-docstring
     def process_exception(self, request, exception):
         logger = logging.getLogger("src.errors")
         if isinstance(exception, (DatabaseError, OperationalError, InterfaceError)):

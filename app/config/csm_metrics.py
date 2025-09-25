@@ -1,6 +1,7 @@
 """
 Хранилище переменных для сбора метрики
 """
+
 from prometheus_client import metrics
 
 APP_BOOKINGS_TOTAL = metrics.Gauge(

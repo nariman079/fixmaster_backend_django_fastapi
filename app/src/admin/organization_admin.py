@@ -1,5 +1,5 @@
 """
-Setting up admin panels
+Настройка админ панели
 """
 
 from django.contrib import admin
@@ -30,16 +30,21 @@ class ContentManagementArea(admin.AdminSite):
 content_management_admin = ContentManagementArea(name="Content management")
 
 
-# Tabular inlines
 class MasterServiceTabularInilne(admin.TabularInline):
+    """Табличная строка услуг"""
+
     model = Service
 
 
 class OrganizationMasterInlinel(admin.TabularInline):
+    """Табличная строка мастеров"""
+
     model = Master
 
 
 class OrganizationImageInlinel(admin.StackedInline):
+    """Табличная строка фотографий"""
+
     model = Image
 
     list_display = ("image",)
@@ -65,15 +70,20 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 
 class CustomerAdmin(admin.ModelAdmin):
+    """Настройка админ панели Клиента"""
+
     list_display = ("username", "telegram_id", "phone")
     list_display_links = ("username",)
 
 
 class ImageAdmin(admin.ModelAdmin):
+    """Настройка админ панели Изображений"""
+
     list_display = ("get_image_url", "organization", "priority")
     list_filter = ("organization",)
 
     def get_image_url(self, obj: Image):
+        """Получение ссылки на Изображение"""
         return format_html(f'<img src="{obj.image_url}" width="300px">')
 
 
@@ -87,6 +97,8 @@ content_management_admin.register(Image, ImageAdmin)
 
 
 class OrderModelAdmin(admin.ModelAdmin):
+    """Настройка админ панели Заказов"""
+
     model = Order
 
 
