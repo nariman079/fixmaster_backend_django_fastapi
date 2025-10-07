@@ -31,6 +31,7 @@ jobs:
       
       - name: Run build
         run: |
+          mv .env.test .env
           docker compose up --build -d 
 
       - name: Run testing
