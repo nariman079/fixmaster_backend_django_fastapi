@@ -22,22 +22,17 @@ jobs:
       - name: Run bandit analys
         run: bandit -r ./
 
+      - name: Run testing
+        run: python manage.py test
+
+
       - name: Upload lint-reason
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lint-reason 
           path: lint-reason.txt
-      
-      - name: Run build
-        run: |
-          mv .env.test .env
-          docker compose up --build -d 
 
-      - name: Run testing
-        run: |
-          docker compose exec app python manage.py test > test-reason.txt
-      
       - name: Upload test reason 
         if: always()
         uses: actions/upload-artifact@v4
