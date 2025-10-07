@@ -23,7 +23,9 @@ jobs:
         run: bandit -r ./
 
       - name: Run testing
-        run: python app/manage.py test
+        run: | 
+          echo "Running tests..." > test-reason.txt
+          python app/manage.py test >> test-reason.txt 2>&1
 
 
       - name: Upload lint-reason
