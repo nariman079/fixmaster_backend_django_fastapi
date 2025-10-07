@@ -3,6 +3,7 @@ Main url models
 """
 
 from django.urls import path
+from django.shortcuts import render
 
 from src.views.order_views import OrderCreateView, FreeBookingView
 from src.views.organization_views import (
@@ -13,6 +14,8 @@ from src.views.organization_views import (
     ServiceListView,
     MasterListView,
 )
+
+
 
 urlpatterns = [
     path("order/create/", OrderCreateView.as_view()),

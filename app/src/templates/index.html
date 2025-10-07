@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FixMaster - Ремонт техники</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            float: left;
+        }
+
+        nav {
+            float: right;
+            margin-top: 10px;
+        }
+
+        nav ul {
+            list-style: none;
+        }
+
+        nav li {
+            display: inline;
+            margin-left: 20px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        nav a:hover {
+            color: #3498db;
+        }
+
+        /* Showcase */
+        #showcase {
+            min-height: 600px;
+            background: url('https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') no-repeat center center/cover;
+            text-align: center;
+            padding-top: 150px;
+            color: white;
+        }
+
+        #showcase h1 {
+            font-size: 50px;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+        }
+
+        #showcase p {
+            font-size: 20px;
+            max-width: 800px;
+            margin: 20px auto;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+        }
+
+        .button {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 18px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #2980b9;
+        }
+
+        /* Sections */
+        .section {
+            padding: 50px 0;
+            background: white;
+            margin: 20px 0;
+        }
+
+        .section h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .services {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .service-box {
+            flex-basis: 30%;
+            background: #f4f4f4;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .service-box h3 {
+            margin-bottom: 10px;
+            color: #3498db;
+        }
+
+        /* Form */
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        /* Footer */
+        footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 20px;
+        }
+
+        /* Responsive */
+        @media(max-width: 768px) {
+            .container {
+                width: 90%;
+            }
+
+            nav {
+                float: none;
+                text-align: center;
+                margin-top: 10px;
+            }
+
+            nav li {
+                display: block;
+                margin: 5px 0;
+            }
+
+            #showcase h1 {
+                font-size: 30px;
+            }
+
+            #showcase p {
+                font-size: 16px;
+            }
+
+            .service-box {
+                flex-basis: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <h1>FixMaster</h1>
+            <nav>
+                <ul>
+                    <li><a href="#showcase">Главная</a></li>
+                    <li><a href="#services">Услуги</a></li>
+                    <li><a href="#order">Заказать</a></li>
+                    <li><a href="#contact">Контакты</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Showcase -->
+    <section id="showcase">
+        <div class="container">
+            <h1>Профессиональный ремонт техники</h1>
+            <p>Быстро, качественно и надежно. Ремонтируем бытовую технику, компьютеры, телефоны и многое другое.</p>
+            <a href="#order" class="button">Заказать ремонт</a>
+        </div>
+    </section>
+
+    <!-- Services -->
+    <section id="services" class="section">
+        <div class="container">
+            <h2>Наши услуги</h2>
+            <div class="services">
+                <div class="service-box">
+                    <h3>Ремонт бытовой техники</h3>
+                    <p>Ремонт стиральных машин, холодильников, микроволновок, телевизоров и другой бытовой техники.</p>
+                </div>
+                <div class="service-box">
+                    <h3>Ремонт компьютеров</h3>
+                    <p>Диагностика, ремонт и настройка компьютеров, ноутбуков, планшетов и другой электроники.</p>
+                </div>
+                <div class="service-box">
+                    <h3>Ремонт телефонов</h3>
+                    <p>Замена экранов, батарей, ремонт после падений и попадания влаги.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Order Form -->
+    <section id="order" class="section">
+        <div class="container">
+            <h2>Заказать ремонт</h2>
+            <div class="form-container">
+                <form id="repair-form">
+                    <div class="form-group">
+                        <label for="name">Имя</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Телефон</label>
+                        <input type="tel" id="phone" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="device">Тип устройства</label>
+                        <select id="device" name="device" required>
+                            <option value="">Выберите тип устройства</option>
+                            <option value="бытовая_техника">Бытовая техника</option>
+                            <option value="компьютер">Компьютер/ноутбук</option>
+                            <option value="телефон">Телефон/планшет</option>
+                            <option value="другое">Другое</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Описание проблемы</label>
+                        <textarea id="description" name="description" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="button">Отправить заявку</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="section">
+        <div class="container">
+            <h2>Контакты</h2>
+            <p><strong>Адрес:</strong> г. Москва, ул. Ремонтная, д. 15</p>
+            <p><strong>Телефон:</strong> +7 (495) 123-45-67</p>
+            <p><strong>Email:</strong> info@fixmaster.ru</p>
+            <p><strong>Режим работы:</strong> Пн-Пт: 9:00-19:00, Сб-Вс: 10:00-17:00</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 FixMaster. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Плавная прокрутка для навигационных ссылок
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Обработка формы заказа
+        document.getElementById('repair-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Получаем данные формы
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+            
+            // В реальном приложении здесь был бы код для отправки данных на сервер
+            console.log('Данные формы:', data);
+            
+            // Показываем сообщение об успешной отправке
+            alert('Спасибо за заявку! Мы свяжемся с вами в ближайшее время.');
+            
+            // Очищаем форму
+            this.reset();
+        });
+
+        // Анимация при прокрутке
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                const sectionTop = section.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                
+                if (sectionTop < windowHeight - 100) {
+                    section.style.opacity = '1';
+                    section.style.transform = 'translateY(0)';
+                }
+            });
+        });
+
+        // Инициализация анимаций
+        document.addEventListener('DOMContentLoaded', function() {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(20px)';
+                section.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            });
+            
+            // Запускаем проверку видимости секций
+            window.dispatchEvent(new Event('scroll'));
+        });
+    </script>
+</body>
+</html>
