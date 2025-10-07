@@ -23,7 +23,7 @@ jobs:
         run: bandit -r ./
 
       - name: Run testing
-        run: python manage.py test
+        run: python app/manage.py test
 
 
       - name: Upload lint-reason
