@@ -4,7 +4,6 @@ Main urls
 
 from django.conf import settings
 from django.conf.urls.static import static
-from django.shortcuts import render
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -12,14 +11,10 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-def index(request):
-    return render(request, 'index.html')
-
 from src.admin import content_management_admin
 from src.views.csm_metrics_views import metrics_view
 
 urlpatterns = [
-    path('', index), 
     path("admin/", content_management_admin.urls),
     path("api/", include("src.urls")),
     path("bot-api/", include("bot.urls")),
