@@ -1,6 +1,9 @@
 name: "CI for all branches"
 
-on: [pull_request]
+on: 
+  push:
+    branches:
+      - develop
 
 jobs:
   lint:
