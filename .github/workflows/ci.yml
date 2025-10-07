@@ -1,13 +1,6 @@
 name: "CI for all branches"
 
-on:
-  push:
-    branches:
-      - develop
-      - main
-      - master
-      - feature/*
-
+on: [pull_request]
 
 jobs:
   lint:
@@ -22,6 +15,9 @@ jobs:
         
       - name: Run ruff checker
         run: ruff check . > lint-reason.txt
+      
+      - name: Run bandit analys
+        run: bandit -r ./
 
       - name: Upload lint-reason
         if: always()
@@ -29,4 +25,21 @@ jobs:
         with:
           name: lint-reason 
           path: lint-reason.txt
+      
+      - name: Run build
+        run: |
+          docker compose up --build -d 
+
+      - name: Run testing
+        run: |
+          docker compose exec app python manage.py test > test-reason.txt
+      
+      - name: Upload test reason 
+        if: always()
+        uses: actions/upload-artifact
+        with:
+          name: test-reason
+          path: test-reason.txt
+          
+
 
