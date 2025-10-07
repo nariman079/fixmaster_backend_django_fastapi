@@ -20,7 +20,8 @@ services:
       - .env
     networks:
       - net
-    
+
+
   redis:
     image: 'redis:alpine'
     restart: always
@@ -55,7 +56,6 @@ services:
 
   app:
     build: .
-    image: nariman079i/fixmaster:latest
     restart: always
     command: poetry run uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 4
     volumes:
